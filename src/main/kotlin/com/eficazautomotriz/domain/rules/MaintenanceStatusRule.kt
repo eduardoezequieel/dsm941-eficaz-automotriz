@@ -1,44 +1,54 @@
 package com.eficazautomotriz.domain.rules
 
-import com.eficazautomotriz.domain.model.MaintenanceStatus
+import com.eficazautomotriz.domain.model.enums.MaintenanceStatus
 
 data class MaintenanceEvaluation(
     val status: MaintenanceStatus,
+    // null cuando no hay registro previo: no hay base sobre la cual proyectar.
     val recommendedMileage: Int?,
-    val mileageDifference: Int?
+    // recommendedMileage - currentMileage; negativo cuando el intervalo ya se excedio.
+    val differenceKm: Int?,
 )
 
+/**
+ * Regla 2: clasifica el mantenimiento preventivo de un vehiculo.
+ *
+ * El resultado es siempre calculado y nunca se persiste: almacenar un valor derivado
+ * abre la puerta a que quede desincronizado del kilometraje real.
+ */
 class MaintenanceStatusRule {
+
+    /**
+     * Evalua en este orden exacto: sin registro previo, luego vencido, luego proximo,
+     * y en cualquier otro caso al dia.
+     */
     fun evaluate(
         currentMileage: Int,
-        lastMaintenanceMileage: Int?,
-        maintenanceInterval: Int,
-        warningThreshold: Int = 500
+        lastServiceMileage: Int?,
+        intervalKm: Int,
+        warningThresholdKm: Int,
     ): MaintenanceEvaluation {
-        require(maintenanceInterval > 0) {
-            "El intervalo de mantenimiento debe ser mayor que cero."
-        }
+        // Un intervalo no positivo es un error de configuracion, no un caso de negocio.
+        require(intervalKm > 0) { "El intervalo de mantenimiento debe ser mayor que cero: $intervalKm" }
 
-        if (lastMaintenanceMileage == null) {
+        if (lastServiceMileage == null) {
             return MaintenanceEvaluation(
                 status = MaintenanceStatus.NO_PREVIOUS_RECORD,
                 recommendedMileage = null,
-                mileageDifference = null
+                differenceKm = null,
             )
         }
 
-        val recommendedMileage = lastMaintenanceMileage + maintenanceInterval
-        val mileageDifference = recommendedMileage - currentMileage
+        val recommendedMileage = lastServiceMileage + intervalKm
         val status = when {
             currentMileage >= recommendedMileage -> MaintenanceStatus.OVERDUE
-            mileageDifference <= warningThreshold -> MaintenanceStatus.DUE_SOON
+            currentMileage >= recommendedMileage - warningThresholdKm -> MaintenanceStatus.DUE_SOON
             else -> MaintenanceStatus.UP_TO_DATE
         }
-
         return MaintenanceEvaluation(
             status = status,
             recommendedMileage = recommendedMileage,
-            mileageDifference = mileageDifference
+            differenceKm = recommendedMileage - currentMileage,
         )
     }
 }

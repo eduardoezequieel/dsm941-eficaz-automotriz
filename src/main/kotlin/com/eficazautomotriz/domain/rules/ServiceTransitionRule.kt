@@ -1,55 +1,46 @@
 package com.eficazautomotriz.domain.rules
 
-import com.eficazautomotriz.domain.model.ServiceStatus
+import com.eficazautomotriz.domain.model.enums.ServiceStatus
 
 sealed interface TransitionResult {
-    object Allowed : TransitionResult
-
-    class Denied(
-        val message: String
-    ) : TransitionResult
+    data object Allowed : TransitionResult
+    data class Denied(val reason: String) : TransitionResult
 }
 
+/**
+ * Regla 3: gobierna el avance de una orden de servicio.
+ *
+ * El ciclo es lineal: Recibido -> En proceso -> Finalizado. Sin retrocesos y sin
+ * transiciones al mismo estado. Finalizado es terminal.
+ */
 class ServiceTransitionRule {
-    fun canTransition(
-        currentStatus: ServiceStatus,
-        nextStatus: ServiceStatus
-    ): TransitionResult {
-        if (currentStatus == nextStatus) {
-            return TransitionResult.Denied("El servicio ya se encuentra en ese estado.")
-        }
 
-        if (currentStatus == ServiceStatus.COMPLETED) {
-            return TransitionResult.Denied("No se pueden realizar cambios despues de completar el servicio.")
-        }
-
-        val allowed = when (currentStatus) {
-            ServiceStatus.RECEIVED -> nextStatus == ServiceStatus.IN_PROGRESS
-            ServiceStatus.IN_PROGRESS -> nextStatus == ServiceStatus.COMPLETED
-            ServiceStatus.COMPLETED -> false
-        }
-
-        return if (allowed) {
-            TransitionResult.Allowed
-        } else {
-            TransitionResult.Denied("La transicion solicitada no sigue el flujo permitido del servicio.")
-        }
-    }
-
-    fun validateClosure(
-        closingMileage: Int?,
-        previousKnownMileage: Int?
-    ): TransitionResult {
-        if (closingMileage == null) {
-            return TransitionResult.Denied("Debe registrar el kilometraje para finalizar el servicio.")
-        }
-
-        if (previousKnownMileage != null && closingMileage < previousKnownMileage) {
-            return TransitionResult.Denied(
-                "El kilometraje de cierre no puede ser menor al kilometraje registrado anteriormente."
+    /** when exhaustivo sobre el estado de origen: agregar un estado rompe la compilacion. */
+    fun canTransition(from: ServiceStatus, to: ServiceStatus): TransitionResult =
+        when (from) {
+            ServiceStatus.RECEIVED -> allowOnly(from, to, ServiceStatus.IN_PROGRESS)
+            ServiceStatus.IN_PROGRESS -> allowOnly(from, to, ServiceStatus.COMPLETED)
+            ServiceStatus.COMPLETED -> TransitionResult.Denied(
+                "La orden ya esta finalizada y no admite mas cambios."
             )
         }
 
-        return TransitionResult.Allowed
+    /** Al cerrar se exige kilometraje y se protege el sentido creciente del odometro. */
+    fun validateClosure(mileageAtService: Int?, lastKnownMileage: Int): TransitionResult = when {
+        mileageAtService == null -> TransitionResult.Denied(
+            "Debe registrar el kilometraje del vehiculo para finalizar la orden."
+        )
+        mileageAtService < lastKnownMileage -> TransitionResult.Denied(
+            "El kilometraje $mileageAtService es menor al ultimo conocido ($lastKnownMileage km)."
+        )
+        else -> TransitionResult.Allowed
     }
+
+    private fun allowOnly(
+        from: ServiceStatus,
+        to: ServiceStatus,
+        expected: ServiceStatus,
+    ): TransitionResult =
+        if (to == expected) TransitionResult.Allowed
+        else TransitionResult.Denied("No se puede pasar de ${from.label} a ${to.label}.")
 }

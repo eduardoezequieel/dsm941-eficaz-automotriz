@@ -1,77 +1,65 @@
 package com.eficazautomotriz.domain.rules
 
+import com.eficazautomotriz.domain.config.SystemConfig
 import com.eficazautomotriz.domain.model.Appointment
-import com.eficazautomotriz.domain.model.SystemConfig
 import com.eficazautomotriz.domain.model.TimeSlot
 import java.time.LocalDate
 
 sealed interface AvailabilityResult {
-    object Available : AvailabilityResult
-
-    class Unavailable(
-        val reason: UnavailabilityReason,
-        val message: String
-    ) : AvailabilityResult
+    data object Available : AvailabilityResult
+    data class Unavailable(val reason: UnavailabilityReason) : AvailabilityResult
 }
 
-enum class UnavailabilityReason {
-    SLOT_DISABLED,
-    DATE_IN_PAST,
-    DAY_MISMATCH,
-    CAPACITY_REACHED
+enum class UnavailabilityReason(val label: String) {
+    SLOT_DISABLED("la franja esta deshabilitada"),
+    DATE_IN_PAST("la fecha ya paso"),
+    DAY_MISMATCH("la franja no corresponde a ese dia de la semana"),
+    CAPACITY_REACHED("la franja alcanzo su capacidad"),
 }
 
-class AppointmentAvailabilityRule(
-    private val today: LocalDate = LocalDate.now()
-) {
+/**
+ * Regla 1: determina si una franja admite una cita mas en una fecha dada.
+ *
+ * Sin estado y sin dependencias: recibe todo por parametro y devuelve un resultado.
+ * No consulta repositorios, no imprime y no lanza excepciones.
+ */
+class AppointmentAvailabilityRule {
+
+    /**
+     * Evalua en orden y devuelve en la primera condicion que falla:
+     * 1) franja deshabilitada, 2) fecha pasada, 3) dia distinto, 4) capacidad llena.
+     */
     fun check(
+        slot: TimeSlot,
         date: LocalDate,
-        timeSlot: TimeSlot,
-        appointments: List<Appointment>,
-        systemConfig: SystemConfig
+        existingAppointments: List<Appointment>,
+        today: LocalDate,
+        config: SystemConfig,
     ): AvailabilityResult {
-        if (!timeSlot.enabled) {
-            return AvailabilityResult.Unavailable(
-                reason = UnavailabilityReason.SLOT_DISABLED,
-                message = "La franja seleccionada esta deshabilitada."
-            )
+        if (!slot.enabled) return unavailable(UnavailabilityReason.SLOT_DISABLED)
+        if (date.isBefore(today)) return unavailable(UnavailabilityReason.DATE_IN_PAST)
+        if (date.dayOfWeek != slot.dayOfWeek) return unavailable(UnavailabilityReason.DAY_MISMATCH)
+
+        val occupied = countOccupying(slot.id, date, existingAppointments)
+        if (occupied >= effectiveCapacity(slot, config)) {
+            return unavailable(UnavailabilityReason.CAPACITY_REACHED)
         }
-
-        if (date.isBefore(today)) {
-            return AvailabilityResult.Unavailable(
-                reason = UnavailabilityReason.DATE_IN_PAST,
-                message = "No se pueden agendar citas en fechas pasadas."
-            )
-        }
-
-        if (date.dayOfWeek != timeSlot.dayOfWeek) {
-            return AvailabilityResult.Unavailable(
-                reason = UnavailabilityReason.DAY_MISMATCH,
-                message = "La fecha no coincide con el dia configurado para la franja."
-            )
-        }
-
-        val capacity = capacityFor(timeSlot, systemConfig)
-        val occupiedCapacity = countAppointmentsThatOccupyCapacity(appointments)
-
-        if (occupiedCapacity >= capacity) {
-            return AvailabilityResult.Unavailable(
-                reason = UnavailabilityReason.CAPACITY_REACHED,
-                message = "La franja seleccionada ya alcanzo su capacidad maxima."
-            )
-        }
-
         return AvailabilityResult.Available
     }
 
-    fun countAppointmentsThatOccupyCapacity(appointments: List<Appointment>): Int {
-        return appointments.count { appointment -> appointment.occupiesCapacity }
+    /** Cupos usados: solo cuentan los estados cuyo occupiesSlot es verdadero. */
+    fun countOccupying(
+        slotId: String,
+        date: LocalDate,
+        existingAppointments: List<Appointment>,
+    ): Int = existingAppointments.count {
+        it.slotId == slotId && it.date == date && it.status.occupiesSlot
     }
 
-    private fun capacityFor(
-        timeSlot: TimeSlot,
-        systemConfig: SystemConfig
-    ): Int {
-        return if (timeSlot.capacity > 0) timeSlot.capacity else systemConfig.defaultSlotCapacity
-    }
+    /** Si la franja no declara capacidad valida, se usa la del sistema. */
+    fun effectiveCapacity(slot: TimeSlot, config: SystemConfig): Int =
+        if (slot.capacity > 0) slot.capacity else config.defaultSlotCapacity
+
+    private fun unavailable(reason: UnavailabilityReason): AvailabilityResult =
+        AvailabilityResult.Unavailable(reason)
 }
