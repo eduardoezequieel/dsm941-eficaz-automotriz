@@ -1,97 +1,87 @@
 package com.eficazautomotriz.domain.rules
 
-import com.eficazautomotriz.domain.model.ServiceStatus
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
+import com.eficazautomotriz.domain.model.enums.ServiceStatus
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class ServiceTransitionRuleTest {
+
     private val rule = ServiceTransitionRule()
 
     @Test
-    fun `permite RECEIVED a IN_PROGRESS`() {
-        val result = rule.canTransition(
-            currentStatus = ServiceStatus.RECEIVED,
-            nextStatus = ServiceStatus.IN_PROGRESS
-        )
+    fun `de recibido a en proceso se permite`() {
+        val result = rule.canTransition(ServiceStatus.RECEIVED, ServiceStatus.IN_PROGRESS)
 
-        assertAllowed(result)
+        assertEquals(TransitionResult.Allowed, result)
     }
 
     @Test
-    fun `permite IN_PROGRESS a COMPLETED`() {
-        val result = rule.canTransition(
-            currentStatus = ServiceStatus.IN_PROGRESS,
-            nextStatus = ServiceStatus.COMPLETED
-        )
+    fun `de en proceso a finalizado se permite`() {
+        val result = rule.canTransition(ServiceStatus.IN_PROGRESS, ServiceStatus.COMPLETED)
 
-        assertAllowed(result)
+        assertEquals(TransitionResult.Allowed, result)
     }
 
     @Test
-    fun `salto directo no permitido`() {
-        val result = rule.canTransition(
-            currentStatus = ServiceStatus.RECEIVED,
-            nextStatus = ServiceStatus.COMPLETED
+    fun `no se puede saltar de recibido a finalizado`() {
+        assertIs<TransitionResult.Denied>(
+            rule.canTransition(ServiceStatus.RECEIVED, ServiceStatus.COMPLETED)
         )
-
-        assertDenied(result)
     }
 
     @Test
-    fun `retroceso no permitido`() {
-        val result = rule.canTransition(
-            currentStatus = ServiceStatus.IN_PROGRESS,
-            nextStatus = ServiceStatus.RECEIVED
+    fun `no se puede retroceder de en proceso a recibido`() {
+        assertIs<TransitionResult.Denied>(
+            rule.canTransition(ServiceStatus.IN_PROGRESS, ServiceStatus.RECEIVED)
         )
-
-        assertDenied(result)
     }
 
     @Test
-    fun `mismo estado no permitido`() {
-        val result = rule.canTransition(
-            currentStatus = ServiceStatus.RECEIVED,
-            nextStatus = ServiceStatus.RECEIVED
-        )
-
-        assertDenied(result)
+    fun `finalizado es terminal hacia cualquier estado`() {
+        ServiceStatus.entries.forEach { target ->
+            assertIs<TransitionResult.Denied>(
+                rule.canTransition(ServiceStatus.COMPLETED, target),
+                "COMPLETED no debe admitir transicion hacia $target",
+            )
+        }
     }
 
     @Test
-    fun `cambios despues de COMPLETED`() {
-        val result = rule.canTransition(
-            currentStatus = ServiceStatus.COMPLETED,
-            nextStatus = ServiceStatus.IN_PROGRESS
-        )
-
-        assertDenied(result)
+    fun `una transicion al mismo estado siempre se deniega`() {
+        ServiceStatus.entries.forEach { status ->
+            assertIs<TransitionResult.Denied>(
+                rule.canTransition(status, status),
+                "$status no debe poder transicionar hacia si mismo",
+            )
+        }
     }
 
     @Test
-    fun `cierre sin kilometraje`() {
-        val result = rule.validateClosure(
-            closingMileage = null,
-            previousKnownMileage = 12_000
+    fun `cerrar sin kilometraje se deniega`() {
+        assertIs<TransitionResult.Denied>(
+            rule.validateClosure(mileageAtService = null, lastKnownMileage = 40_000)
         )
-
-        assertDenied(result)
     }
 
     @Test
-    fun `kilometraje menor al anterior`() {
-        val result = rule.validateClosure(
-            closingMileage = 11_500,
-            previousKnownMileage = 12_000
+    fun `cerrar con kilometraje menor al ultimo conocido se deniega`() {
+        assertIs<TransitionResult.Denied>(
+            rule.validateClosure(mileageAtService = 39_999, lastKnownMileage = 40_000)
         )
-
-        assertDenied(result)
     }
 
-    private fun assertAllowed(result: TransitionResult) {
-        assertTrue(result is TransitionResult.Allowed)
+    @Test
+    fun `cerrar con el mismo kilometraje conocido se permite`() {
+        val result = rule.validateClosure(mileageAtService = 40_000, lastKnownMileage = 40_000)
+
+        assertEquals(TransitionResult.Allowed, result)
     }
 
-    private fun assertDenied(result: TransitionResult) {
-        assertTrue(result is TransitionResult.Denied)
+    @Test
+    fun `cerrar con kilometraje mayor se permite`() {
+        val result = rule.validateClosure(mileageAtService = 41_500, lastKnownMileage = 40_000)
+
+        assertEquals(TransitionResult.Allowed, result)
     }
 }
