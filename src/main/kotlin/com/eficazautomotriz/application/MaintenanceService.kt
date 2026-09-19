@@ -1,120 +1,112 @@
 package com.eficazautomotriz.application
 
+import com.eficazautomotriz.data.MaintenanceRecordRepository
+import com.eficazautomotriz.data.MaintenanceTypeRepository
+import com.eficazautomotriz.data.VehicleRepository
+import com.eficazautomotriz.domain.config.SystemConfig
 import com.eficazautomotriz.domain.error.DomainError
 import com.eficazautomotriz.domain.error.Outcome
-import com.eficazautomotriz.domain.model.MaintenanceStatus
+import com.eficazautomotriz.domain.error.flatMap
+import com.eficazautomotriz.domain.model.MaintenanceRecord
 import com.eficazautomotriz.domain.model.MaintenanceType
-import com.eficazautomotriz.domain.model.SystemConfig
+import com.eficazautomotriz.domain.model.User
 import com.eficazautomotriz.domain.model.Vehicle
-import com.eficazautomotriz.domain.repository.MaintenanceRecordRepository
-import com.eficazautomotriz.domain.repository.MaintenanceTypeRepository
-import com.eficazautomotriz.domain.repository.VehicleRepository
+import com.eficazautomotriz.domain.model.enums.MaintenanceStatus
 import com.eficazautomotriz.domain.rules.MaintenanceEvaluation
 import com.eficazautomotriz.domain.rules.MaintenanceStatusRule
+import com.eficazautomotriz.logging.ErrorLogger
 
+/** Una linea del reporte de mantenimiento: el tipo, su base y la evaluacion calculada. */
 data class MaintenanceLine(
-    val maintenanceType: MaintenanceType,
+    val type: MaintenanceType,
     val lastServiceMileage: Int?,
-    val evaluation: MaintenanceEvaluation
+    val evaluation: MaintenanceEvaluation,
 )
 
+/** Estado de mantenimiento de un vehiculo, con el detalle por tipo y el estado agregado. */
 data class VehicleMaintenanceReport(
     val vehicle: Vehicle,
     val lines: List<MaintenanceLine>,
-    val overallStatus: MaintenanceStatus
+    val overallStatus: MaintenanceStatus,
 )
 
+/**
+ * Modulo de procesamiento: calcula la clasificacion del mantenimiento preventivo.
+ * Nada de lo que devuelve se almacena; se recalcula en cada consulta.
+ */
 class MaintenanceService(
-    private val vehicleRepository: VehicleRepository,
-    private val maintenanceRecordRepository: MaintenanceRecordRepository,
-    private val maintenanceTypeRepository: MaintenanceTypeRepository,
-    private val systemConfig: SystemConfig,
-    private val maintenanceStatusRule: MaintenanceStatusRule = MaintenanceStatusRule()
-) {
-    fun getActiveMaintenanceTypes(): Outcome<List<MaintenanceType>> {
-        return Outcome.Success(maintenanceTypeRepository.findActive())
+    private val vehicles: VehicleRepository,
+    private val maintenanceRecords: MaintenanceRecordRepository,
+    private val maintenanceTypes: MaintenanceTypeRepository,
+    private val statusRule: MaintenanceStatusRule,
+    private val config: SystemConfig,
+    logger: ErrorLogger,
+) : ApplicationService(logger) {
+
+    fun activeTypes(): List<MaintenanceType> = maintenanceTypes.findActive().sortedBy { it.name }
+
+    fun reportFor(actor: User, vehicleId: String): Outcome<VehicleMaintenanceReport> {
+        val vehicle = vehicles.findById(vehicleId)
+            ?: return fail("reportFor", DomainError.NotFound("vehiculo", vehicleId))
+
+        return requireOwnershipOrStaff("reportFor", actor, vehicle.ownerId, "consultar el mantenimiento de $vehicleId")
+            .flatMap { Outcome.success(buildReport(vehicle)) }
     }
 
-    fun generateVehicleReport(
-        vehicleId: String,
-        canViewMaintenance: Boolean = true
-    ): Outcome<VehicleMaintenanceReport> {
-        if (!canViewMaintenance) {
-            return Outcome.Failure(DomainError.UnauthorizedAccess)
-        }
-
-        val vehicle = vehicleRepository.findById(vehicleId)
-            ?: return Outcome.Failure(DomainError.EntityNotFound("vehiculo", vehicleId))
-
-        return Outcome.Success(buildReportWithoutPermissionCheck(vehicle))
+    /** Reporte sin verificacion de permiso, para agregados internos y resumenes del sistema. */
+    fun buildReport(vehicle: Vehicle): VehicleMaintenanceReport {
+        val recordsByType = maintenanceRecords.findByVehicle(vehicle.id).associateBy { it.maintenanceTypeId }
+        // Se listan todos los tipos activos: los que no tienen registro exhiben NO_PREVIOUS_RECORD.
+        val lines = maintenanceTypes.findActive()
+            .sortedBy { it.name }
+            .map { type ->
+                val record = recordsByType[type.id]
+                MaintenanceLine(
+                    type = type,
+                    lastServiceMileage = record?.lastServiceMileage,
+                    evaluation = statusRule.evaluate(
+                        currentMileage = vehicle.currentMileage,
+                        lastServiceMileage = record?.lastServiceMileage,
+                        intervalKm = type.intervalKm,
+                        warningThresholdKm = config.warningThresholdKm,
+                    ),
+                )
+            }
+        return VehicleMaintenanceReport(vehicle, lines, aggregate(lines))
     }
 
-    fun buildReportWithoutPermissionCheck(vehicle: Vehicle): VehicleMaintenanceReport {
-        val lines = maintenanceTypeRepository.findActive().map { maintenanceType ->
-            val lastMileage = maintenanceRecordRepository.findLastMileage(
-                vehicleId = vehicle.id,
-                maintenanceTypeId = maintenanceType.id
+    /** Registra o actualiza el kilometraje base de un tipo de mantenimiento del vehiculo. */
+    fun registerBaseline(vehicleId: String, maintenanceTypeId: String, mileage: Int): MaintenanceRecord {
+        val existing = maintenanceRecords.findByVehicleAndType(vehicleId, maintenanceTypeId)
+        val record = existing?.copy(lastServiceMileage = mileage)
+            ?: MaintenanceRecord(
+                id = maintenanceRecords.nextId(),
+                vehicleId = vehicleId,
+                maintenanceTypeId = maintenanceTypeId,
+                lastServiceMileage = mileage,
             )
-            val evaluation = maintenanceStatusRule.evaluate(
-                currentMileage = vehicle.currentMileage,
-                lastMaintenanceMileage = lastMileage,
-                maintenanceInterval = maintenanceType.intervalMileage,
-                warningThreshold = systemConfig.maintenanceWarningThreshold
-            )
-
-            MaintenanceLine(
-                maintenanceType = maintenanceType,
-                lastServiceMileage = lastMileage,
-                evaluation = evaluation
-            )
-        }
-
-        return VehicleMaintenanceReport(
-            vehicle = vehicle,
-            lines = lines,
-            overallStatus = mostSevereStatus(lines)
-        )
+        return maintenanceRecords.save(record)
     }
 
-    fun saveBaseMaintenanceMileage(
-        vehicleId: String,
-        maintenanceTypeId: String,
-        mileage: Int
-    ): Outcome<Unit> {
-        if (vehicleRepository.findById(vehicleId) == null) {
-            return Outcome.Failure(DomainError.EntityNotFound("vehiculo", vehicleId))
-        }
-
-        if (maintenanceTypeRepository.findById(maintenanceTypeId) == null) {
-            return Outcome.Failure(DomainError.EntityNotFound("tipo de mantenimiento", maintenanceTypeId))
-        }
-
-        maintenanceRecordRepository.saveBaseMileage(
-            vehicleId = vehicleId,
-            maintenanceTypeId = maintenanceTypeId,
-            mileage = mileage
-        )
-
-        return Outcome.Success(Unit)
+    /** Cuantos vehiculos hay en cada clasificacion, para el resumen del sistema. */
+    fun statusCounts(): Map<MaintenanceStatus, Int> {
+        val counts = vehicles.findAll()
+            .groupingBy { buildReport(it).overallStatus }
+            .eachCount()
+        return MaintenanceStatus.entries.associateWith { counts[it] ?: 0 }
     }
 
-    fun countVehiclesByMaintenanceStatus(): Outcome<Map<MaintenanceStatus, Int>> {
-        val reports = vehicleRepository.findAll().map { vehicle ->
-            buildReportWithoutPermissionCheck(vehicle)
-        }
-
-        return Outcome.Success(
-            reports.groupingBy { report -> report.overallStatus }.eachCount()
-        )
-    }
-
-    private fun mostSevereStatus(lines: List<MaintenanceLine>): MaintenanceStatus {
-        val statuses = lines.map { line -> line.evaluation.status }
-
+    /**
+     * El vehiculo hereda la clasificacion mas severa de sus tipos de mantenimiento.
+     * Sin ninguna linea evaluable, no hay base sobre la cual proyectar nada.
+     */
+    private fun aggregate(lines: List<MaintenanceLine>): MaintenanceStatus {
+        val statuses = lines.map { it.evaluation.status }
         return when {
-            MaintenanceStatus.OVERDUE in statuses -> MaintenanceStatus.OVERDUE
-            MaintenanceStatus.DUE_SOON in statuses -> MaintenanceStatus.DUE_SOON
-            MaintenanceStatus.UP_TO_DATE in statuses -> MaintenanceStatus.UP_TO_DATE
+            statuses.isEmpty() -> MaintenanceStatus.NO_PREVIOUS_RECORD
+            statuses.contains(MaintenanceStatus.OVERDUE) -> MaintenanceStatus.OVERDUE
+            statuses.contains(MaintenanceStatus.DUE_SOON) -> MaintenanceStatus.DUE_SOON
+            statuses.contains(MaintenanceStatus.UP_TO_DATE) -> MaintenanceStatus.UP_TO_DATE
             else -> MaintenanceStatus.NO_PREVIOUS_RECORD
         }
     }

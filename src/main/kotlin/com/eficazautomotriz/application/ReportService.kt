@@ -1,140 +1,96 @@
 package com.eficazautomotriz.application
 
-import com.eficazautomotriz.domain.error.DomainError
-import com.eficazautomotriz.domain.error.Outcome
-import com.eficazautomotriz.domain.model.ServiceStatus
-import com.eficazautomotriz.domain.repository.AppointmentRepository
-import com.eficazautomotriz.domain.repository.ServiceOrderRepository
-import com.eficazautomotriz.domain.repository.VehicleRepository
+import com.eficazautomotriz.data.AppointmentRepository
+import com.eficazautomotriz.data.ServiceOrderRepository
+import com.eficazautomotriz.data.ServiceTypeRepository
+import com.eficazautomotriz.data.VehicleRepository
+import com.eficazautomotriz.domain.model.enums.AppointmentStatus
+import com.eficazautomotriz.domain.model.enums.MaintenanceStatus
+import com.eficazautomotriz.domain.model.enums.ServiceStatus
 import java.time.LocalDate
 
+/** Una fila de reporte: etiqueta, conteo y porcentaje sobre el total del periodo. */
 data class ReportRow(
     val label: String,
-    val quantity: Int,
-    val percentage: Double
+    val count: Int,
+    val percentage: Double,
 )
 
 data class PeriodReport(
-    val startDate: LocalDate,
-    val endDate: LocalDate,
+    val title: String,
+    val from: LocalDate,
+    val to: LocalDate,
+    val rows: List<ReportRow>,
     val total: Int,
-    val rows: List<ReportRow>
 )
 
 data class SystemSummary(
     val totalVehicles: Int,
-    val appointmentsByStatus: List<ReportRow>,
-    val ordersByStatus: List<ReportRow>,
-    val vehiclesByMaintenanceStatus: List<ReportRow>
+    val appointmentsByStatus: Map<AppointmentStatus, Int>,
+    val serviceOrdersByStatus: Map<ServiceStatus, Int>,
+    val vehiclesByMaintenanceStatus: Map<MaintenanceStatus, Int>,
 )
 
+/**
+ * Construye los agregados de los reportes. Devuelve estructuras de datos:
+ * el dibujo de barras y tablas es responsabilidad de la capa de consola.
+ */
 class ReportService(
-    private val vehicleRepository: VehicleRepository,
-    private val appointmentRepository: AppointmentRepository,
-    private val serviceOrderRepository: ServiceOrderRepository,
-    private val maintenanceService: MaintenanceService
+    private val appointments: AppointmentRepository,
+    private val serviceOrders: ServiceOrderRepository,
+    private val serviceTypes: ServiceTypeRepository,
+    private val vehicles: VehicleRepository,
+    private val maintenanceService: MaintenanceService,
 ) {
-    fun appointmentsByStatusReport(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): Outcome<PeriodReport> {
-        val periodError = validatePeriod(startDate, endDate)
-        if (periodError != null) {
-            return Outcome.Failure(periodError)
-        }
 
-        val appointments = appointmentRepository.findByPeriod(startDate, endDate)
-        return Outcome.Success(
-            PeriodReport(
-                startDate = startDate,
-                endDate = endDate,
-                total = appointments.size,
-                rows = rowsFrom(appointments) { appointment -> appointment.status.toString() }
-            )
+    /** Reporte 1: citas por estado dentro del periodo, contadas por su fecha de atencion. */
+    fun appointmentsByStatus(from: LocalDate, to: LocalDate): PeriodReport {
+        val inPeriod = appointments.findByDateRange(from, to)
+        val counts = inPeriod.groupingBy { it.status }.eachCount()
+        return buildReport("CITAS POR ESTADO", from, to, inPeriod.size) {
+            AppointmentStatus.entries
+                .mapNotNull { status -> counts[status]?.let { status.label to it } }
+        }
+    }
+
+    /** Reporte 2: solo ordenes finalizadas dentro del periodo, agrupadas por tipo de servicio. */
+    fun completedServicesByType(from: LocalDate, to: LocalDate): PeriodReport {
+        val typeNames = serviceTypes.findAll().associate { it.id to it.name }
+        val completed = serviceOrders.findByStatus(ServiceStatus.COMPLETED)
+            .filter { order -> order.closedAt?.toLocalDate()?.let { it >= from && it <= to } == true }
+        val counts = completed.groupingBy { it.serviceTypeId }.eachCount()
+        return buildReport("SERVICIOS FINALIZADOS POR TIPO", from, to, completed.size) {
+            counts.entries
+                .sortedByDescending { it.value }
+                .map { (typeId, count) -> (typeNames[typeId] ?: typeId) to count }
+        }
+    }
+
+    /** Resumen general del sistema, siempre calculado sobre el estado actual de los datos. */
+    fun systemSummary(): SystemSummary {
+        val appointmentCounts = appointments.findAll().groupingBy { it.status }.eachCount()
+        val serviceCounts = serviceOrders.findAll().groupingBy { it.status }.eachCount()
+        return SystemSummary(
+            totalVehicles = vehicles.findAll().size,
+            appointmentsByStatus = AppointmentStatus.entries.associateWith { appointmentCounts[it] ?: 0 },
+            serviceOrdersByStatus = ServiceStatus.entries.associateWith { serviceCounts[it] ?: 0 },
+            vehiclesByMaintenanceStatus = maintenanceService.statusCounts(),
         )
     }
 
-    fun completedOrdersByServiceTypeReport(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): Outcome<PeriodReport> {
-        val periodError = validatePeriod(startDate, endDate)
-        if (periodError != null) {
-            return Outcome.Failure(periodError)
-        }
-
-        val completedOrders = serviceOrderRepository.findByPeriod(startDate, endDate)
-            .filter { order -> order.status == ServiceStatus.COMPLETED }
-
-        return Outcome.Success(
-            PeriodReport(
-                startDate = startDate,
-                endDate = endDate,
-                total = completedOrders.size,
-                rows = rowsFrom(completedOrders) { order -> order.serviceType.toString() }
-            )
-        )
+    private fun buildReport(
+        title: String,
+        from: LocalDate,
+        to: LocalDate,
+        total: Int,
+        entries: () -> List<Pair<String, Int>>,
+    ): PeriodReport {
+        val rows = entries()
+            .sortedByDescending { it.second }
+            .map { (label, count) -> ReportRow(label, count, percentageOf(count, total)) }
+        return PeriodReport(title, from, to, rows, total)
     }
 
-    fun systemSummary(): Outcome<SystemSummary> {
-        val vehicles = vehicleRepository.findAll()
-        val appointments = appointmentRepository.findAll()
-        val orders = serviceOrderRepository.findAll()
-
-        val maintenanceCounts = when (val result = maintenanceService.countVehiclesByMaintenanceStatus()) {
-            is Outcome.Success -> result.value
-            is Outcome.Failure -> return result
-        }
-
-        return Outcome.Success(
-            SystemSummary(
-                totalVehicles = vehicles.size,
-                appointmentsByStatus = rowsFrom(appointments) { appointment -> appointment.status.toString() },
-                ordersByStatus = rowsFrom(orders) { order -> order.status.toString() },
-                vehiclesByMaintenanceStatus = rowsFromCounts(
-                    counts = maintenanceCounts.mapKeys { entry -> entry.key.toString() },
-                    total = vehicles.size
-                )
-            )
-        )
-    }
-
-    private fun validatePeriod(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): DomainError? {
-        return if (startDate.isAfter(endDate)) {
-            DomainError.OperationNotAllowed("La fecha inicial no puede ser posterior a la fecha final.")
-        } else {
-            null
-        }
-    }
-
-    private fun <T> rowsFrom(
-        items: List<T>,
-        labelSelector: (T) -> String
-    ): List<ReportRow> {
-        val counts = items.groupingBy(labelSelector).eachCount()
-        return rowsFromCounts(counts, items.size)
-    }
-
-    private fun rowsFromCounts(
-        counts: Map<String, Int>,
-        total: Int
-    ): List<ReportRow> {
-        return counts.map { (label, quantity) ->
-            ReportRow(
-                label = label,
-                quantity = quantity,
-                percentage = percentage(quantity, total)
-            )
-        }
-    }
-
-    private fun percentage(
-        quantity: Int,
-        total: Int
-    ): Double {
-        return if (total == 0) 0.0 else quantity * 100.0 / total
-    }
+    private fun percentageOf(count: Int, total: Int): Double =
+        if (total == 0) 0.0 else count * 100.0 / total
 }
