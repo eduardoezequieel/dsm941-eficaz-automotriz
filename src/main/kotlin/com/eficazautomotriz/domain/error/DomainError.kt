@@ -1,55 +1,32 @@
 package com.eficazautomotriz.domain.error
 
+import com.eficazautomotriz.domain.model.enums.ServiceStatus
 import com.eficazautomotriz.domain.rules.UnavailabilityReason
 
-private fun appointmentUnavailableMessage(reason: UnavailabilityReason): String {
-    return when (reason) {
-        UnavailabilityReason.SLOT_DISABLED -> "La franja seleccionada esta deshabilitada."
-        UnavailabilityReason.DATE_IN_PAST -> "No se pueden agendar citas en fechas pasadas."
-        UnavailabilityReason.DAY_MISMATCH -> "La fecha no coincide con el dia configurado para la franja."
-        UnavailabilityReason.CAPACITY_REACHED -> "La franja seleccionada ya alcanzo su capacidad maxima."
-    }
-}
+/**
+ * Errores de negocio esperados. Se devuelven dentro de un Outcome, nunca se lanzan:
+ * que una franja este llena no es una falla del programa, es un desenlace previsto.
+ */
+sealed class DomainError(val message: String) {
 
-sealed class DomainError(
-    val message: String
-) {
-    data class EntityNotFound(
-        val entity: String,
-        val id: String? = null
-    ) : DomainError(
-        message = if (id.isNullOrBlank()) {
-            "No se encontro $entity."
-        } else {
-            "No se encontro $entity con identificador $id."
-        }
-    )
+    data class SlotUnavailable(val reason: UnavailabilityReason) :
+        DomainError("Franja no disponible: ${reason.label}")
 
-    object UnauthorizedAccess : DomainError(
-        message = "No tienes autorizacion para realizar esta operacion."
-    )
+    data class InvalidTransition(val from: ServiceStatus, val to: ServiceStatus) :
+        DomainError("Transicion no permitida: de ${from.label} a ${to.label}")
 
-    data class OperationNotAllowed(
-        val reason: String = "La operacion solicitada no esta permitida."
-    ) : DomainError(
-        message = reason
-    )
+    data class MileageDecrease(val attempted: Int, val lastKnown: Int) :
+        DomainError("El kilometraje no puede decrecer: $attempted es menor que $lastKnown km")
 
-    data class AppointmentUnavailable(
-        val reason: UnavailabilityReason
-    ) : DomainError(
-        message = appointmentUnavailableMessage(reason)
-    )
+    data class NotFound(val entity: String, val id: String) :
+        DomainError("No se encontro $entity con identificador $id")
 
-    data class InvalidStateTransition(
-        val reason: String = "La transicion de estado no es valida."
-    ) : DomainError(
-        message = reason
-    )
+    data class Forbidden(val action: String) :
+        DomainError("No tiene permiso para: $action")
 
-    data class Validation(
-        val error: ValidationError
-    ) : DomainError(
-        message = error.message
-    )
+    data class MissingBaseline(val vehicleId: String) :
+        DomainError("El vehiculo $vehicleId no tiene kilometraje base de mantenimiento registrado")
+
+    data class Invalid(val validation: ValidationError) :
+        DomainError(validation.message)
 }

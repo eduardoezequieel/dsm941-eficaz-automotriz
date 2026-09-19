@@ -2,211 +2,99 @@ package com.eficazautomotriz.domain.error
 
 import com.eficazautomotriz.domain.validation.TextField
 import com.eficazautomotriz.domain.validation.TextFields
-import java.net.URI
-import java.time.Year
 
-private val PLATE_FIELD = TextField(name = "plate", label = "placa", maxLength = 9)
-private val MILEAGE_FIELD = TextField(name = "mileage", label = "kilometraje", maxLength = 0)
-private val YEAR_FIELD = TextField(name = "year", label = "anio", maxLength = 0)
-private val DATE_FIELD = TextField(name = "date", label = "fecha", maxLength = 10)
-private val SLOT_CAPACITY_FIELD = TextField(name = "slotCapacity", label = "capacidad de franja", maxLength = 0)
+/**
+ * Errores de validacion sobre un campo concreto. La consola los usa para rechazar al
+ * teclear y los casos de uso para revalidar lo que reciben: mismas reglas, un solo lugar.
+ *
+ * `field` es el nombre tecnico para el log; `label` es como se le nombra al usuario.
+ */
+sealed class ValidationError(val field: String, val label: String, val message: String) {
 
-private val SALVADORAN_PLATE_FORMAT = Regex("^[A-Z]{1,3}[0-9]{3}[A-Z0-9]{3}$")
+    data object BlankPlate :
+        ValidationError("plate", "placa", "La placa no puede estar vacia.")
 
-sealed class ValidationError(
-    val field: String,
-    val label: String,
-    val message: String
-) {
-    object EmptyPlate : ValidationError(
-        field = PLATE_FIELD.name,
-        label = PLATE_FIELD.label,
-        message = "La placa es obligatoria."
-    )
+    data object PlateWithSpaces :
+        ValidationError("plate", "placa", "La placa no puede contener espacios.")
 
-    object PlateContainsSpaces : ValidationError(
-        field = PLATE_FIELD.name,
-        label = PLATE_FIELD.label,
-        message = "La placa no debe contener espacios."
-    )
+    data object InvalidPlateFormat :
+        ValidationError(
+            "plate",
+            "placa",
+            "La placa debe tener formato de El Salvador: 1 a 3 letras de tipo, 3 numeros y 3 caracteres alfanumericos (ejemplo P123456).",
+        )
 
-    object InvalidSalvadoranPlateFormat : ValidationError(
-        field = PLATE_FIELD.name,
-        label = PLATE_FIELD.label,
-        message = "La placa debe tener de 1 a 3 letras, 3 numeros y 3 caracteres alfanumericos."
-    )
+    data class DuplicatePlate(val plate: String) :
+        ValidationError("plate", "placa", "Ya existe un vehiculo registrado con la placa $plate.")
 
-    object DuplicatePlate : ValidationError(
-        field = PLATE_FIELD.name,
-        label = PLATE_FIELD.label,
-        message = "La placa ya esta registrada."
-    )
+    data class MileageOutOfRange(val value: Int, val max: Int) :
+        ValidationError("currentMileage", "kilometraje", "El kilometraje debe estar entre 0 y $max: $value.")
 
-    class MileageOutOfRange(
-        min: Int,
-        max: Int
-    ) : ValidationError(
-        field = MILEAGE_FIELD.name,
-        label = MILEAGE_FIELD.label,
-        message = "El kilometraje debe estar entre $min y $max."
-    )
+    data class YearOutOfRange(val value: Int, val min: Int, val max: Int) :
+        ValidationError("year", "año", "El año $value esta fuera del rango permitido ($min-$max).")
 
-    class YearOutOfRange(
-        min: Int,
-        max: Int
-    ) : ValidationError(
-        field = YEAR_FIELD.name,
-        label = YEAR_FIELD.label,
-        message = "El anio debe estar entre $min y $max."
-    )
+    data class BlankText(val text: TextField) :
+        ValidationError(text.name, text.label, "El valor no puede quedar vacio.")
 
-    class EmptyText(
-        textField: TextField
-    ) : ValidationError(
-        field = textField.name,
-        label = textField.label,
-        message = "El campo ${textField.label} es obligatorio."
-    )
+    data class TextTooLong(val text: TextField, val length: Int) :
+        ValidationError(
+            text.name,
+            text.label,
+            "El texto admite ${text.maxLength} caracteres como maximo; escribio $length.",
+        )
 
-    class TextTooLong(
-        textField: TextField
-    ) : ValidationError(
-        field = textField.name,
-        label = textField.label,
-        message = "El campo ${textField.label} no debe superar ${textField.maxLength} caracteres."
-    )
+    data class InvalidCharacters(val text: TextField) :
+        ValidationError(text.name, text.label, "El texto tiene caracteres no permitidos. ${text.allowedHint}")
 
-    class UnsupportedCharacters(
-        textField: TextField
-    ) : ValidationError(
-        field = textField.name,
-        label = textField.label,
-        message = "El campo ${textField.label} contiene caracteres no permitidos. ${textField.allowedHint}"
-    )
+    data object DateInPast :
+        ValidationError("date", "fecha", "La fecha debe ser igual o posterior a hoy.")
 
-    class PastDate(
-        textField: TextField = DATE_FIELD
-    ) : ValidationError(
-        field = textField.name,
-        label = textField.label,
-        message = "La fecha no puede estar en el pasado."
-    )
+    data object InvalidImageUrl :
+        ValidationError("imageUrl", "direccion de la imagen", "La direccion debe iniciar con http:// o https://.")
 
-    object InvalidImageUrl : ValidationError(
-        field = TextFields.IMAGE_URL.name,
-        label = TextFields.IMAGE_URL.label,
-        message = "La direccion de la imagen debe ser una URL valida."
-    )
+    data class SlotCapacityOutOfRange(val value: Int, val max: Int) :
+        ValidationError("capacity", "capacidad", "La capacidad de la franja debe estar entre 0 y $max: $value.")
 
-    class SlotCapacityOutOfRange(
-        min: Int,
-        max: Int
-    ) : ValidationError(
-        field = SLOT_CAPACITY_FIELD.name,
-        label = SLOT_CAPACITY_FIELD.label,
-        message = "La capacidad de franja debe estar entre $min y $max."
-    )
-
+    /** Comprobaciones puras y sin dependencias. Viajan a la Etapa 3 con el resto del dominio. */
     companion object {
-        fun validarPlaca(
-            placa: String,
-            placaDuplicada: Boolean = false
-        ): ValidationError? {
-            val valor = placa.trim()
 
-            if (valor.isEmpty()) {
-                return EmptyPlate
-            }
-
-            if (placa.any { it.isWhitespace() }) {
-                return PlateContainsSpaces
-            }
-
-            if (!SALVADORAN_PLATE_FORMAT.matches(valor.uppercase())) {
-                return InvalidSalvadoranPlateFormat
-            }
-
-            if (placaDuplicada) {
-                return DuplicatePlate
-            }
-
-            return null
+        fun validatePlate(plate: String): ValidationError? = when {
+            plate.isBlank() -> BlankPlate
+            plate.any { it.isWhitespace() } -> PlateWithSpaces
+            !SALVADORAN_PLATE.matches(plate.uppercase()) -> InvalidPlateFormat
+            else -> null
         }
 
-        fun validarTextoObligatorio(
-            textField: TextField,
-            valor: String
-        ): ValidationError? {
-            if (valor.isBlank()) {
-                return EmptyText(textField)
-            }
-
-            return validarTextoOpcional(textField, valor)
+        /** Campo de texto obligatorio: presente, dentro del limite y con caracteres permitidos. */
+        fun validateText(field: TextField, value: String): ValidationError? = when {
+            value.isBlank() -> BlankText(field)
+            value.length > field.maxLength -> TextTooLong(field, value.length)
+            field.allowed?.matches(value) == false -> InvalidCharacters(field)
+            else -> null
         }
 
-        fun validarTextoOpcional(
-            textField: TextField,
-            valor: String?
-        ): ValidationError? {
-            if (valor.isNullOrBlank()) {
-                return null
-            }
+        /** Igual que `validateText`, pero vacio es una respuesta valida: el usuario lo omitio. */
+        fun validateOptionalText(field: TextField, value: String): ValidationError? =
+            if (value.isBlank()) null else validateText(field, value)
 
-            if (valor.length > textField.maxLength) {
-                return TextTooLong(textField)
-            }
+        fun validateMileage(mileage: Int, maxMileage: Int): ValidationError? =
+            if (mileage in 0..maxMileage) null else MileageOutOfRange(mileage, maxMileage)
 
-            val allowed = textField.allowed
-            if (allowed != null && !allowed.matches(valor)) {
-                return UnsupportedCharacters(textField)
-            }
+        fun validateYear(year: Int, minYear: Int, maxYear: Int): ValidationError? =
+            if (year in minYear..maxYear) null else YearOutOfRange(year, minYear, maxYear)
 
-            return null
-        }
+        fun validateImageUrl(url: String): ValidationError? =
+            validateText(TextFields.IMAGE_URL, url)
+                ?: if (url.startsWith("http://") || url.startsWith("https://")) null else InvalidImageUrl
 
-        fun validarKilometraje(
-            kilometraje: Int,
-            min: Int = 0,
-            max: Int = 1_000_000
-        ): ValidationError? {
-            return if (kilometraje in min..max) null else MileageOutOfRange(min, max)
-        }
+        /** `0` es valido: significa «usar la capacidad por omision del sistema». */
+        fun validateSlotCapacity(capacity: Int, maxCapacity: Int): ValidationError? =
+            if (capacity in 0..maxCapacity) null else SlotCapacityOutOfRange(capacity, maxCapacity)
 
-        fun validarAnio(
-            anio: Int,
-            min: Int = 1900,
-            max: Int = Year.now().value + 1
-        ): ValidationError? {
-            return if (anio in min..max) null else YearOutOfRange(min, max)
-        }
-
-        fun validarUrlImagen(url: String?): ValidationError? {
-            val textError = validarTextoOpcional(TextFields.IMAGE_URL, url)
-            if (textError != null) {
-                return textError
-            }
-
-            val valor = url?.trim().orEmpty()
-            if (valor.isEmpty()) {
-                return null
-            }
-
-            val uri = runCatching { URI(valor) }.getOrNull()
-            val scheme = uri?.scheme?.lowercase()
-
-            if (uri == null || scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) {
-                return InvalidImageUrl
-            }
-
-            return null
-        }
-
-        fun validarCapacidadFranja(
-            capacidad: Int,
-            min: Int = 1,
-            max: Int = 20
-        ): ValidationError? {
-            return if (capacidad in min..max) null else SlotCapacityOutOfRange(min, max)
-        }
+        /**
+         * Placa salvadoreña compacta: letras de tipo, tres digitos y tres alfanumericos.
+         * Cubre las numericas (P123456) y las alfanumericas desde 2021 (P12300A).
+         */
+        private val SALVADORAN_PLATE = Regex("^[A-Z]{1,3}[0-9]{3}[0-9A-Z]{3}$")
     }
 }

@@ -1,52 +1,33 @@
 package com.eficazautomotriz.domain.validation
 
-// Describes the reusable validation settings for a text field.
+/**
+ * Regla de un campo de texto: como se le nombra al usuario, cuanto admite y que
+ * caracteres. La consola la usa para rechazar al teclear y los casos de uso para
+ * revalidar, de modo que el limite sea uno solo.
+ */
 data class TextField(
     val name: String,
     val label: String,
     val maxLength: Int,
     val allowed: Regex? = null,
-    val allowedHint: String = ""
+    val allowedHint: String = "",
 )
 
-// Centralizes text field configurations used across the domain.
+/** Catalogo de los campos de texto que el usuario puede teclear. */
 object TextFields {
-    private const val VEHICLE_TEXT_ALLOWED_HINT =
-        "Permite letras, numeros, espacios y los caracteres . , ' & / -"
 
-    private val VEHICLE_TEXT_ALLOWED = Regex("^[\\p{L}\\p{N} .,'&/-]+$")
+    /** Letras con tilde, digitos y la puntuacion que aparece en marcas y modelos reales. */
+    private val NAME_CHARACTERS = Regex("^[\\p{L}\\p{N} .,'&/-]+$")
 
-    val MAKE = TextField(
-        name = "make",
-        label = "marca",
-        maxLength = 30,
-        allowed = VEHICLE_TEXT_ALLOWED,
-        allowedHint = VEHICLE_TEXT_ALLOWED_HINT
-    )
+    private const val NAME_HINT = "Use letras, numeros, espacios y los signos . , ' & / -"
 
-    val MODEL = TextField(
-        name = "model",
-        label = "modelo",
-        maxLength = 30,
-        allowed = VEHICLE_TEXT_ALLOWED,
-        allowedHint = VEHICLE_TEXT_ALLOWED_HINT
-    )
+    val MAKE = TextField("make", "marca", maxLength = 30, allowed = NAME_CHARACTERS, allowedHint = NAME_HINT)
 
-    val REASON = TextField(
-        name = "reason",
-        label = "motivo",
-        maxLength = 200
-    )
+    val MODEL = TextField("model", "modelo", maxLength = 30, allowed = NAME_CHARACTERS, allowedHint = NAME_HINT)
 
-    val NOTES = TextField(
-        name = "notes",
-        label = "notas de recepcion",
-        maxLength = 500
-    )
+    val REASON = TextField("reason", "motivo", maxLength = 200)
 
-    val IMAGE_URL = TextField(
-        name = "imageUrl",
-        label = "direccion de la imagen",
-        maxLength = 300
-    )
+    val NOTES = TextField("notes", "notas de recepcion", maxLength = 500)
+
+    val IMAGE_URL = TextField("imageUrl", "direccion de la imagen", maxLength = 300)
 }

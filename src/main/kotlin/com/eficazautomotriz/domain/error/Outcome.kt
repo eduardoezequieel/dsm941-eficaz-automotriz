@@ -1,32 +1,29 @@
 package com.eficazautomotriz.domain.error
 
-sealed class Outcome<out T> {
-    data class Success<out T>(
-        val value: T
-    ) : Outcome<T>()
+/**
+ * Resultado de un caso de uso. Se eligio un sealed propio en vez de kotlin.Result
+ * porque este ultimo exige un Throwable en la rama de falla, y los errores de negocio
+ * de este sistema se devuelven como dato, no se lanzan.
+ */
+sealed interface Outcome<out T> {
 
-    data class Failure(
-        val error: DomainError
-    ) : Outcome<Nothing>()
+    data class Success<out T>(val value: T) : Outcome<T>
 
-    fun <R> map(transform: (T) -> R): Outcome<R> {
-        return when (this) {
-            is Success -> Success(transform(value))
-            is Failure -> this
-        }
+    data class Failure(val error: DomainError) : Outcome<Nothing>
+
+    companion object {
+        fun <T> success(value: T): Outcome<T> = Success(value)
+        fun failure(error: DomainError): Outcome<Nothing> = Failure(error)
     }
+}
 
-    fun getOrNull(): T? {
-        return when (this) {
-            is Success -> value
-            is Failure -> null
-        }
-    }
+/** Encadena casos de uso sin anidar comprobaciones de exito en cada paso. */
+inline fun <T, R> Outcome<T>.flatMap(transform: (T) -> Outcome<R>): Outcome<R> = when (this) {
+    is Outcome.Success -> transform(value)
+    is Outcome.Failure -> this
+}
 
-    fun errorOrNull(): DomainError? {
-        return when (this) {
-            is Success -> null
-            is Failure -> error
-        }
-    }
+fun <T> Outcome<T>.errorOrNull(): DomainError? = when (this) {
+    is Outcome.Success -> null
+    is Outcome.Failure -> error
 }
