@@ -1,178 +1,111 @@
 package com.eficazautomotriz.application
 
-import com.eficazautomotriz.domain.model.Appointment
-import com.eficazautomotriz.domain.model.AppointmentStatus
-import com.eficazautomotriz.domain.model.MaintenanceType
-import com.eficazautomotriz.domain.model.ServiceOrder
-import com.eficazautomotriz.domain.model.ServiceStatus
-import com.eficazautomotriz.domain.model.SystemConfig
-import com.eficazautomotriz.domain.model.Vehicle
-import com.eficazautomotriz.domain.repository.AppointmentRepository
-import com.eficazautomotriz.domain.repository.MaintenanceRecordRepository
-import com.eficazautomotriz.domain.repository.MaintenanceTypeRepository
-import com.eficazautomotriz.domain.repository.ServiceOrderRepository
-import com.eficazautomotriz.domain.repository.VehicleRepository
+import com.eficazautomotriz.data.Repositories
+import com.eficazautomotriz.data.SeedData
+import com.eficazautomotriz.domain.config.SystemConfig
+import com.eficazautomotriz.domain.model.User
+import com.eficazautomotriz.domain.rules.AppointmentAvailabilityRule
+import com.eficazautomotriz.domain.rules.MaintenanceStatusRule
+import com.eficazautomotriz.domain.rules.ServiceTransitionRule
+import com.eficazautomotriz.logging.ErrorLogger
 import java.time.LocalDate
+import java.time.LocalDateTime
 
-class TestEnvironment(
-    val vehicles: MutableList<Vehicle> = mutableListOf(),
-    val maintenanceTypes: MutableList<MaintenanceType> = mutableListOf(),
-    val maintenanceMileage: MutableMap<Pair<String, String>, Int> = mutableMapOf(),
-    val appointmentsInPeriod: MutableList<Appointment> = mutableListOf(),
-    val allAppointments: MutableList<Appointment> = appointmentsInPeriod,
-    val ordersInPeriod: MutableList<ServiceOrder> = mutableListOf(),
-    val allOrders: MutableList<ServiceOrder> = ordersInPeriod,
-    val systemConfig: SystemConfig = systemConfig()
-) {
-    val vehicleRepository: VehicleRepository = FakeVehicleRepository(vehicles)
-    val maintenanceRecordRepository: MaintenanceRecordRepository =
-        FakeMaintenanceRecordRepository(maintenanceMileage)
-    val maintenanceTypeRepository: MaintenanceTypeRepository =
-        FakeMaintenanceTypeRepository(maintenanceTypes)
-    val appointmentRepository: AppointmentRepository =
-        FakeAppointmentRepository(appointmentsInPeriod, allAppointments)
-    val serviceOrderRepository: ServiceOrderRepository =
-        FakeServiceOrderRepository(ordersInPeriod, allOrders)
+/** Logger de prueba: guarda los eventos en memoria en vez de escribir al disco. */
+class RecordingErrorLogger : ErrorLogger {
+
+    val entries = mutableListOf<String>()
+
+    override fun warn(context: String, message: String, data: String) {
+        entries += "WARN|$context|$message|$data"
+    }
+
+    override fun error(context: String, message: String, data: String) {
+        entries += "ERROR|$context|$message|$data"
+    }
+}
+
+/**
+ * Arma el grafo completo de dependencias con los datos semilla, igual que Main,
+ * para que las pruebas de casos de uso trabajen sobre un sistema real y no sobre dobles.
+ */
+class TestEnvironment(val today: LocalDate = LocalDate.of(2026, 9, 16)) {
+
+    val now: LocalDateTime = today.atTime(10, 0)
+    val config = SystemConfig()
+    val logger = RecordingErrorLogger()
+    val repositories = Repositories()
+
+    private val availabilityRule = AppointmentAvailabilityRule()
+    private val maintenanceStatusRule = MaintenanceStatusRule()
+    private val transitionRule = ServiceTransitionRule()
+
+    val vehicleService = VehicleService(
+        repositories.vehicles,
+        repositories.maintenanceRecords,
+        config,
+        logger,
+    )
 
     val maintenanceService = MaintenanceService(
-        vehicleRepository = vehicleRepository,
-        maintenanceRecordRepository = maintenanceRecordRepository,
-        maintenanceTypeRepository = maintenanceTypeRepository,
-        systemConfig = systemConfig
+        repositories.vehicles,
+        repositories.maintenanceRecords,
+        repositories.maintenanceTypes,
+        maintenanceStatusRule,
+        config,
+        logger,
+    )
+
+    val appointmentService = AppointmentService(
+        repositories.appointments,
+        repositories.vehicles,
+        repositories.timeSlots,
+        repositories.serviceTypes,
+        availabilityRule,
+        config,
+        logger,
+    )
+
+    val serviceOrderService = ServiceOrderService(
+        repositories.serviceOrders,
+        repositories.evidences,
+        repositories.vehicles,
+        repositories.appointments,
+        repositories.serviceTypes,
+        maintenanceService,
+        vehicleService,
+        transitionRule,
+        logger,
     )
 
     val reportService = ReportService(
-        vehicleRepository = vehicleRepository,
-        appointmentRepository = appointmentRepository,
-        serviceOrderRepository = serviceOrderRepository,
-        maintenanceService = maintenanceService
+        repositories.appointments,
+        repositories.serviceOrders,
+        repositories.serviceTypes,
+        repositories.vehicles,
+        maintenanceService,
     )
 
-    companion object {
-        fun vehicle(
-            id: String,
-            currentMileage: Int
-        ): Vehicle {
-            return Vehicle(
-                id = id,
-                currentMileage = currentMileage
-            )
+    init {
+        SeedData.load(repositories, today)
+    }
+
+    val firstClient: User get() = requireNotNull(repositories.users.findById("USR-001"))
+    val secondClient: User get() = requireNotNull(repositories.users.findById("USR-002"))
+    val staff: User get() = requireNotNull(repositories.users.findById("USR-003"))
+
+    /** Primera franja libre a partir de manana, util para agendar sin colisionar. */
+    fun freeSlotOnOrAfterTomorrow(): Pair<LocalDate, String> {
+        var date = today.plusDays(1)
+        repeat(DAYS_TO_SCAN) {
+            val free = appointmentService.slotsFor(date, today).firstOrNull { it.selectable }
+            if (free != null) return date to free.slot.id
+            date = date.plusDays(1)
         }
-
-        fun maintenanceType(
-            id: String,
-            name: String = id,
-            intervalMileage: Int = 5_000,
-            active: Boolean = true
-        ): MaintenanceType {
-            return MaintenanceType(
-                id = id,
-                name = name,
-                intervalMileage = intervalMileage,
-                active = active
-            )
-        }
-
-        fun appointment(
-            status: AppointmentStatus
-        ): Appointment {
-            return Appointment(
-                status = status
-            )
-        }
-
-        fun serviceOrder(
-            status: ServiceStatus,
-            serviceType: String
-        ): ServiceOrder {
-            return ServiceOrder(
-                status = status,
-                serviceType = serviceType
-            )
-        }
-
-        fun systemConfig(
-            maintenanceWarningThreshold: Int = 500
-        ): SystemConfig {
-            return SystemConfig(
-                defaultSlotCapacity = 2,
-                maintenanceWarningThreshold = maintenanceWarningThreshold
-            )
-        }
-    }
-}
-
-private class FakeVehicleRepository(
-    private val vehicles: MutableList<Vehicle>
-) : VehicleRepository {
-    override fun findById(id: String): Vehicle? {
-        return vehicles.find { vehicle -> vehicle.id == id }
+        error("Los datos semilla no dejaron ninguna franja libre en $DAYS_TO_SCAN dias")
     }
 
-    override fun findAll(): List<Vehicle> {
-        return vehicles.toList()
-    }
-}
-
-private class FakeMaintenanceTypeRepository(
-    private val maintenanceTypes: MutableList<MaintenanceType>
-) : MaintenanceTypeRepository {
-    override fun findActive(): List<MaintenanceType> {
-        return maintenanceTypes.filter { maintenanceType -> maintenanceType.active }
-    }
-
-    override fun findById(id: String): MaintenanceType? {
-        return maintenanceTypes.find { maintenanceType -> maintenanceType.id == id }
-    }
-}
-
-private class FakeMaintenanceRecordRepository(
-    private val maintenanceMileage: MutableMap<Pair<String, String>, Int>
-) : MaintenanceRecordRepository {
-    override fun findLastMileage(
-        vehicleId: String,
-        maintenanceTypeId: String
-    ): Int? {
-        return maintenanceMileage[vehicleId to maintenanceTypeId]
-    }
-
-    override fun saveBaseMileage(
-        vehicleId: String,
-        maintenanceTypeId: String,
-        mileage: Int
-    ) {
-        maintenanceMileage[vehicleId to maintenanceTypeId] = mileage
-    }
-}
-
-private class FakeAppointmentRepository(
-    private val appointmentsInPeriod: MutableList<Appointment>,
-    private val allAppointments: MutableList<Appointment>
-) : AppointmentRepository {
-    override fun findByPeriod(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): List<Appointment> {
-        return appointmentsInPeriod.toList()
-    }
-
-    override fun findAll(): List<Appointment> {
-        return allAppointments.toList()
-    }
-}
-
-private class FakeServiceOrderRepository(
-    private val ordersInPeriod: MutableList<ServiceOrder>,
-    private val allOrders: MutableList<ServiceOrder>
-) : ServiceOrderRepository {
-    override fun findByPeriod(
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): List<ServiceOrder> {
-        return ordersInPeriod.toList()
-    }
-
-    override fun findAll(): List<ServiceOrder> {
-        return allOrders.toList()
+    private companion object {
+        const val DAYS_TO_SCAN = 14
     }
 }
