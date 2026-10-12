@@ -20,3 +20,16 @@ logs/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Etapa 3: Android y credenciales (nunca se commitean)
+app/google-services.json
+local.properties
+*.keystore
+*.jks
+app/build/
+core/build/
+.cxx/
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
