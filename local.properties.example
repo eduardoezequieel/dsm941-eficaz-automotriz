@@ -1,0 +1,6 @@
+sdk.dir=
+cloudinary.cloudName=
+cloudinary.uploadPreset=
+google.webClientId=
+# Debug only: true = offline demo with the mockup data (no Firebase). See README, "Modo demostración".
+demo.inMemory=false
