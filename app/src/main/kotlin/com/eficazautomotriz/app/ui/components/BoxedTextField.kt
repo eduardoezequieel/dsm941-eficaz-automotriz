@@ -26,7 +26,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.eficazautomotriz.app.ui.theme.EficazColors
@@ -75,9 +77,21 @@ fun BoxedTextField(
     ) {
         Text(label.uppercase(), style = SectionLabelStyle, color = EficazColors.Navy)
         Spacer(Modifier.height(EficazDimens.SpaceXxs))
+        // Keeps the cursor next to what the user typed when the filter rewrites the text
+        // (the plate filter adds the leading P). An outside change moves it to the end.
+        var editing by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+        val current = if (editing.text == value) editing else TextFieldValue(value, TextRange(value.length))
         BasicTextField(
-            value = value,
-            onValueChange = { typed -> onValueChange(InputFilters.apply(typed, inputFilter, maxLength)) },
+            value = current,
+            onValueChange = { typed ->
+                val text = InputFilters.apply(typed.text, inputFilter, maxLength)
+                editing = if (text == typed.text) {
+                    typed
+                } else {
+                    TextFieldValue(text, TextRange(InputFilters.cursorAfter(typed.text, typed.selection.end, inputFilter, maxLength)))
+                }
+                if (text != value) onValueChange(text)
+            },
             enabled = enabled,
             singleLine = singleLine,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = EficazColors.TextPrimary),

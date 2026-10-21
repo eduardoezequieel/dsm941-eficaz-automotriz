@@ -20,6 +20,29 @@ class InputMasksTest {
     }
 
     @Test
+    fun `typing a plate without the P keeps the digits in order`() {
+        // Replays the IME: each key goes in at the cursor, then the filter rewrites the text.
+        var text = ""
+        var cursor = 0
+        for (key in "123AB2") {
+            val typed = text.take(cursor) + key + text.drop(cursor)
+            cursor = InputFilters.cursorAfter(typed, cursor + 1, InputFilters.Plate, PLATE_MAX_LENGTH)
+            text = typePlate(typed)
+        }
+        assertEquals("P123AB2", text)
+        assertEquals(text.length, cursor)
+    }
+
+    @Test
+    fun `the cursor stays put when the filter drops or keeps characters`() {
+        fun cursor(typed: String, at: Int) = InputFilters.cursorAfter(typed, at, InputFilters.Plate, PLATE_MAX_LENGTH)
+        assertEquals(2, cursor("1", 1))
+        assertEquals(2, cursor("P1-", 3))
+        assertEquals(1, cursor("P23", 1))
+        assertEquals(PLATE_MAX_LENGTH, cursor("P1234567", 8))
+    }
+
+    @Test
     fun `the plate filter stops at seven characters`() {
         assertEquals("P123456", typePlate("P1234567890"))
     }
