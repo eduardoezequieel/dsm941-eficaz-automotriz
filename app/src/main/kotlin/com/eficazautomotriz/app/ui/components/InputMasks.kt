@@ -94,6 +94,16 @@ object InputFilters {
         val filtered = filter.filter(typed)
         return if (maxLength != null && filtered.length > maxLength) filtered.take(maxLength) else filtered
     }
+
+    /**
+     * Where the cursor goes after [apply]: right after whatever the filter keeps of the text
+     * before it. The plate filter turns "1|" into "P1|", not "P|1", so the next digit lands
+     * after the 1 instead of before it.
+     */
+    fun cursorAfter(typed: String, cursor: Int, filter: InputFilter, maxLength: Int?): Int {
+        val result = apply(typed, filter, maxLength)
+        return apply(typed.take(cursor.coerceIn(0, typed.length)), filter, maxLength).length.coerceAtMost(result.length)
+    }
 }
 
 /**
