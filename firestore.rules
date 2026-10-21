@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)); }
+    function isStaff() { return signedIn() && me().data.role == 'STAFF'; }
+    function isOwner(ownerField) { return signedIn() && resource.data[ownerField] == request.auth.uid; }
+    // Owner checks for collections that only carry a vehicleId / serviceOrderId.
+    function ownsVehicle(vehicleId) {
+      return get(/databases/$(database)/documents/vehiculos/$(vehicleId)).data.ownerId == request.auth.uid;
+    }
+    function ownsServiceOrder(orderId) {
+      return ownsVehicle(get(/databases/$(database)/documents/servicios/$(orderId)).data.vehicleId);
+    }
+    // A single-document read of a missing id is allowed (it reveals nothing): findById returns
+    // null and nextId can probe for a free id. Queries (list) never rely on it.
+
+    match /usuarios/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'CLIENT';
+      allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+    match /vehiculos/{id} {
+      allow get: if signedIn() && (resource == null || resource.data.ownerId == request.auth.uid || isStaff());
+      allow list: if signedIn() && (resource.data.ownerId == request.auth.uid || isStaff());
+      // The plate must be claimed in placas/{PLATE} by this vehicle in the same transaction.
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/placas/$(request.resource.data.plate)).data.vehicleId == id;
+      allow update: if isOwner('ownerId') || isStaff();
+      allow delete: if isOwner('ownerId');
+    }
+    match /citas/{id} {
+      // Availability is read from ocupacion, so a client only ever reads their own appointments.
+      allow get: if signedIn() && (resource == null || resource.data.clientId == request.auth.uid || isStaff());
+      allow list: if signedIn() && (resource.data.clientId == request.auth.uid || isStaff());
+      allow create: if signedIn() && request.resource.data.clientId == request.auth.uid && request.resource.data.status == 'PENDING';
+      // The owner may cancel, and may answer a reschedule: accept (CONFIRMED) or decline (CANCELLED).
+      allow update: if isStaff()
+        || (isOwner('clientId') && request.resource.data.status == 'CANCELLED')
+        || (isOwner('clientId') && resource.data.status == 'RESCHEDULED'
+            && request.resource.data.status in ['CONFIRMED', 'CANCELLED']);
+      allow delete: if false;
+    }
+    // Clients read servicios, evidencias and estadosMantenimiento only through queries filtered
+    // by vehicleId / serviceOrderId, which the rules engine resolves against the owner's vehicle.
+    match /servicios/{id} {
+      allow get: if signedIn() && (resource == null || isStaff() || ownsVehicle(resource.data.vehicleId));
+      allow list: if signedIn() && (isStaff() || ownsVehicle(resource.data.vehicleId));
+      allow write: if isStaff();      // history is read-only for the client
+    }
+    match /evidencias/{id} {
+      allow get: if signedIn() && (resource == null || isStaff() || ownsServiceOrder(resource.data.serviceOrderId));
+      allow list: if signedIn() && (isStaff() || ownsServiceOrder(resource.data.serviceOrderId));
+      allow write: if isStaff();
+    }
+    match /estadosMantenimiento/{id} {
+      allow get: if signedIn() && (resource == null || isStaff() || ownsVehicle(resource.data.vehicleId));
+      allow list: if signedIn() && (isStaff() || ownsVehicle(resource.data.vehicleId));
+      // The owner writes baselines of their own vehicle and deletes them with it; staff on service closure.
+      allow create: if isStaff() || (signedIn() && ownsVehicle(request.resource.data.vehicleId));
+      allow update: if isStaff() || (signedIn() && ownsVehicle(resource.data.vehicleId)
+        && request.resource.data.vehicleId == resource.data.vehicleId);
+      allow delete: if isStaff() || (signedIn() && ownsVehicle(resource.data.vehicleId));
+    }
+    match /tiposServicio/{id} { allow read: if signedIn(); allow write: if isStaff(); }
+    match /tiposMantenimiento/{id} { allow read: if signedIn(); allow write: if isStaff(); }
+    match /configFranjas/{id} { allow read: if signedIn(); allow write: if isStaff(); }
+
+    // Support documents (see SupportDocuments.kt). They replace collection-wide reads.
+    match /contadores/{name} {
+      // Last number issued for readable ids (VEH-007). A client may only add exactly 1;
+      // staff may raise it further (backfill and seeded ids). It never goes down.
+      allow read: if signedIn();
+      allow create: if signedIn() && validCounter() && (request.resource.data.value == 1 || isStaff());
+      allow update: if signedIn() && validCounter()
+        && (request.resource.data.value == resource.data.value + 1
+            || (isStaff() && request.resource.data.value > resource.data.value));
+      allow delete: if false;
+    }
+    match /placas/{plate} {
+      // Plate claim { vehicleId, ownerId }: reading it only reveals that the plate exists.
+      // create only applies to a missing document, so a plate cannot be claimed twice.
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['vehicleId', 'ownerId'])
+        && request.resource.data.vehicleId is string
+        && (request.resource.data.ownerId == request.auth.uid || isStaff());
+      allow update: if false;
+      allow delete: if signedIn() && (resource.data.ownerId == request.auth.uid || isStaff());
+    }
+    match /ocupacion/{key} {
+      // Places taken { date, slotId, count } per date and slot, kept in the appointment transaction.
+      allow read: if signedIn();
+      allow create: if signedIn() && validOccupancy(key) && (request.resource.data.count == 1 || isStaff());
+      allow update: if signedIn() && validOccupancy(key)
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.slotId == resource.data.slotId
+        && (request.resource.data.count == resource.data.count + 1
+            || request.resource.data.count == resource.data.count - 1
+            || isStaff());
+      allow delete: if isStaff();
+    }
+
+    function validCounter() {
+      return request.resource.data.keys().hasOnly(['value']) && request.resource.data.value is int;
+    }
+    function validOccupancy(key) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['date', 'slotId', 'count'])
+        && data.count is int && data.count >= 0
+        && key == data.date + '_' + data.slotId;
+    }
+  }
+}

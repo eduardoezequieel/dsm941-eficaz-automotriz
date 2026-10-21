@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "estadosMantenimiento",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vehicleId", "order": "ASCENDING" },
+        { "fieldPath": "maintenanceTypeId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
