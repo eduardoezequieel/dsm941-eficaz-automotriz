@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema de la ventana solamente; los colores de la UI los pone EficazTheme en Compose. -->
+    <style name="Theme.Eficaz" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/workshop_blue</item>
+    </style>
+</resources>
