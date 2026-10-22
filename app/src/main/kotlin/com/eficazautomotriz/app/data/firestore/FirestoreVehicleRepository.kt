@@ -51,7 +51,7 @@ class FirestoreVehicleRepository(db: FirebaseFirestore) :
                 when {
                     claimedBy == null -> tx.set(plateRef, SupportDocuments.plateClaim(entity))
                     isNew && claimedBy != entity.id ->
-                        throw IllegalStateException("La placa ${entity.plate} ya esta registrada")
+                        throw IllegalStateException("La placa ${entity.plate} ya está registrada")
                 }
                 tx.set(vehicleRef, toMap(entity))
                 null

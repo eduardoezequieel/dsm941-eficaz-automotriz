@@ -21,17 +21,17 @@ class ServiceTransitionRule {
             ServiceStatus.RECEIVED -> allowOnly(from, to, ServiceStatus.IN_PROGRESS)
             ServiceStatus.IN_PROGRESS -> allowOnly(from, to, ServiceStatus.COMPLETED)
             ServiceStatus.COMPLETED -> TransitionResult.Denied(
-                "La orden ya esta finalizada y no admite mas cambios."
+                "La orden ya está finalizada y no admite más cambios."
             )
         }
 
     /** Closing requires a mileage and protects the odometer's increasing direction. */
     fun validateClosure(mileageAtService: Int?, lastKnownMileage: Int): TransitionResult = when {
         mileageAtService == null -> TransitionResult.Denied(
-            "Debe registrar el kilometraje del vehiculo para finalizar la orden."
+            "Debe registrar el kilometraje del vehículo para finalizar la orden."
         )
         mileageAtService < lastKnownMileage -> TransitionResult.Denied(
-            "El kilometraje $mileageAtService es menor al ultimo conocido ($lastKnownMileage km)."
+            "El kilometraje $mileageAtService es menor al último conocido ($lastKnownMileage km)."
         )
         else -> TransitionResult.Allowed
     }

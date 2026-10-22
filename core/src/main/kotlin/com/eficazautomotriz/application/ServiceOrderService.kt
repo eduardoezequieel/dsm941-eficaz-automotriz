@@ -78,7 +78,7 @@ class ServiceOrderService(
         now: LocalDateTime,
     ): Outcome<ServiceOrder> = requireStaff("create", actor, "crear ordenes de servicio").flatMap {
         if (vehicles.findById(vehicleId) == null) {
-            return@flatMap fail("create", DomainError.NotFound("vehiculo", vehicleId))
+            return@flatMap fail("create", DomainError.NotFound("vehículo", vehicleId))
         }
         if (serviceTypes.findById(serviceTypeId) == null) {
             return@flatMap fail("create", DomainError.NotFound("tipo de servicio", serviceTypeId))
@@ -150,7 +150,7 @@ class ServiceOrderService(
         val order = serviceOrders.findById(orderId)
             ?: return@flatMap fail("complete", DomainError.NotFound("orden de servicio", orderId))
         val vehicle = vehicles.findById(order.vehicleId)
-            ?: return@flatMap fail("complete", DomainError.NotFound("vehiculo", order.vehicleId))
+            ?: return@flatMap fail("complete", DomainError.NotFound("vehículo", order.vehicleId))
 
         when (val transition = transitionRule.canTransition(order.status, ServiceStatus.COMPLETED)) {
             is TransitionResult.Denied -> return@flatMap fail(

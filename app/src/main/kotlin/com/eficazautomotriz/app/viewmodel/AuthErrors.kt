@@ -17,5 +17,5 @@ internal fun authErrorMessage(error: Throwable): String = when (error) {
     is FirebaseAuthInvalidCredentialsException -> "Correo o contraseña incorrectos."
     is FirebaseNetworkException -> "Sin conexión. Revise su red e intente de nuevo."
     is FirebaseTooManyRequestsException -> "Demasiados intentos. Espere un momento e intente de nuevo."
-    else -> "No se pudo iniciar sesión: ${error.message ?: error::class.simpleName}"
+    else -> "Ocurrió un error. Inténtalo de nuevo."
 }

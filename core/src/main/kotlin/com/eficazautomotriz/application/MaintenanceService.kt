@@ -47,7 +47,7 @@ class MaintenanceService(
 
     fun reportFor(actor: User, vehicleId: String): Outcome<VehicleMaintenanceReport> {
         val vehicle = vehicles.findById(vehicleId)
-            ?: return fail("reportFor", DomainError.NotFound("vehiculo", vehicleId))
+            ?: return fail("reportFor", DomainError.NotFound("vehículo", vehicleId))
 
         return requireOwnershipOrStaff("reportFor", actor, vehicle.ownerId, "consultar el mantenimiento de $vehicleId")
             .flatMap { Outcome.success(buildReport(vehicle)) }

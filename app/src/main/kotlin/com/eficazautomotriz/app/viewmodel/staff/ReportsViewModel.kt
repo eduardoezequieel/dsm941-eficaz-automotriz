@@ -49,6 +49,9 @@ class ReportsViewModel(graph: AppGraph) : EficazViewModel(graph) {
     )
     val state: StateFlow<ReportsState> = _state.asStateFlow()
 
+    /** The offline demo shows mockup data; only then does the screen say the values are samples. */
+    val demoMode: Boolean = graph.demoMode
+
     /** Only the latest load may publish: an older, slower period must not overwrite a newer one. */
     private var loadJob: Job? = null
 
