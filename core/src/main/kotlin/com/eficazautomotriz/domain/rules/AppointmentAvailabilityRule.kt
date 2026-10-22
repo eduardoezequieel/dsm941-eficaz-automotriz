@@ -11,9 +11,9 @@ sealed interface AvailabilityResult {
 }
 
 enum class UnavailabilityReason(val label: String) {
-    SLOT_DISABLED("la franja esta deshabilitada"),
+    SLOT_DISABLED("la franja está deshabilitada"),
     DATE_IN_PAST("la fecha ya paso"),
-    DAY_MISMATCH("la franja no corresponde a ese dia de la semana"),
+    DAY_MISMATCH("la franja no corresponde a ese día de la semana"),
     CAPACITY_REACHED("la franja alcanzo su capacidad"),
 }
 

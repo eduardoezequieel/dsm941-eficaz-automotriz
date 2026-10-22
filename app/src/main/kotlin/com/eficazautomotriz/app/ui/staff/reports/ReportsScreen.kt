@@ -105,6 +105,7 @@ fun ReportsScreen(
             is UiState.Error -> ErrorBox(reports.message, onRetry = vm::load)
             is UiState.Ready -> ReportsContent(
                 reports = reports.data,
+                demoMode = vm.demoMode,
                 onExport = { export(reportSummaryText(reports.data, state.from, state.to)) },
                 onFilter = { filtering = true },
             )
@@ -114,7 +115,7 @@ fun ReportsScreen(
 }
 
 @Composable
-private fun ReportsContent(reports: Reports, onExport: () -> Unit, onFilter: () -> Unit) {
+private fun ReportsContent(reports: Reports, demoMode: Boolean, onExport: () -> Unit, onFilter: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(EficazDimens.SpaceSm)) {
         EficazCard {
             SectionLabel("Citas por estado")
@@ -140,14 +141,16 @@ private fun ReportsContent(reports: Reports, onExport: () -> Unit, onFilter: () 
             OutlinedNavyButton("Exportar resumen", onClick = onExport, modifier = Modifier.weight(1f))
             PrimaryButton("Filtrar periodo", onClick = onFilter, modifier = Modifier.weight(1f))
         }
-        Text(
-            "Los valores mostrados son datos de ejemplo del prototipo.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = EficazColors.TextSecondary,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (demoMode) {
+            Text(
+                "Los valores mostrados son datos de ejemplo del prototipo.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = EficazColors.TextSecondary,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         SummaryCard(reports.summary)
     }
 }
@@ -217,6 +220,7 @@ private fun ReportsContentPreview() {
                     vehiclesByMaintenanceStatus = MaintenanceStatus.entries.associateWith { 1 },
                 ),
             ),
+            demoMode = true,
             onExport = {},
             onFilter = {},
         )

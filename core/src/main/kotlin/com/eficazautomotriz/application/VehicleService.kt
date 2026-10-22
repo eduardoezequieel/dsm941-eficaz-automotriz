@@ -30,8 +30,8 @@ class VehicleService(
 
     fun findAccessible(actor: User, vehicleId: String): Outcome<Vehicle> {
         val vehicle = vehicles.findById(vehicleId)
-            ?: return fail("findAccessible", DomainError.NotFound("vehiculo", vehicleId))
-        return requireOwnershipOrStaff("findAccessible", actor, vehicle.ownerId, "consultar el vehiculo $vehicleId")
+            ?: return fail("findAccessible", DomainError.NotFound("vehículo", vehicleId))
+        return requireOwnershipOrStaff("findAccessible", actor, vehicle.ownerId, "consultar el vehículo $vehicleId")
             .flatMap { Outcome.success(vehicle) }
     }
 
@@ -46,7 +46,7 @@ class VehicleService(
         today: LocalDate,
     ): Outcome<Vehicle> {
         val plate = ValidationError.normalizePlate(rawPlate)
-        val permission = requireOwnershipOrStaff("register", actor, ownerId, "registrar un vehiculo a nombre de $ownerId")
+        val permission = requireOwnershipOrStaff("register", actor, ownerId, "registrar un vehículo a nombre de $ownerId")
         if (permission is Outcome.Failure) return permission
 
         validateVehicleFields(plate, make, model, year, currentMileage, today)

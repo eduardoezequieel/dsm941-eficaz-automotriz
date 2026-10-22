@@ -40,7 +40,7 @@ class CatalogService(
         description: String,
         active: Boolean,
     ): Outcome<ServiceType> =
-        requireStaff("saveServiceType", actor, "configurar el catalogo de servicios").flatMap {
+        requireStaff("saveServiceType", actor, "configurar el catálogo de servicios").flatMap {
             val current = if (id == null) {
                 null
             } else {

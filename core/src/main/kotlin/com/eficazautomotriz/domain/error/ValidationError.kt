@@ -12,7 +12,7 @@ import com.eficazautomotriz.domain.validation.TextFields
 sealed class ValidationError(val field: String, val label: String, val message: String) {
 
     data object BlankPlate :
-        ValidationError("plate", "placa", "La placa no puede estar vacia.")
+        ValidationError("plate", "placa", "La placa no puede estar vacía.")
 
     data object PlateWithSpaces :
         ValidationError("plate", "placa", "La placa no puede contener espacios.")
@@ -21,26 +21,26 @@ sealed class ValidationError(val field: String, val label: String, val message: 
         ValidationError(
             "plate",
             "placa",
-            "La placa debe iniciar con P y llevar 6 letras o numeros (ejemplos P123-456, P123-AB2, PA12-BB3).",
+            "La placa debe iniciar con P y llevar 6 letras o números (ejemplos P123-456, P123-AB2, PA12-BB3).",
         )
 
     data class DuplicatePlate(val plate: String) :
-        ValidationError("plate", "placa", "Ya existe un vehiculo registrado con la placa $plate.")
+        ValidationError("plate", "placa", "Ya existe un vehículo registrado con la placa $plate.")
 
     data class MileageOutOfRange(val value: Int, val max: Int) :
         ValidationError("currentMileage", "kilometraje", "El kilometraje debe estar entre 0 y $max: $value.")
 
     data class YearOutOfRange(val value: Int, val min: Int, val max: Int) :
-        ValidationError("year", "año", "El año $value esta fuera del rango permitido ($min-$max).")
+        ValidationError("year", "año", "El año $value está fuera del rango permitido ($min-$max).")
 
     data class BlankText(val text: TextField) :
-        ValidationError(text.name, text.label, "El valor no puede quedar vacio.")
+        ValidationError(text.name, text.label, "El valor no puede quedar vacío.")
 
     data class TextTooLong(val text: TextField, val length: Int) :
         ValidationError(
             text.name,
             text.label,
-            "El texto admite ${text.maxLength} caracteres como maximo; escribio $length.",
+            "El texto admite ${text.maxLength} caracteres como máximo; escribió $length.",
         )
 
     data class InvalidCharacters(val text: TextField) :
@@ -50,7 +50,7 @@ sealed class ValidationError(val field: String, val label: String, val message: 
         ValidationError("date", "fecha", "La fecha debe ser igual o posterior a hoy.")
 
     data object InvalidImageUrl :
-        ValidationError("imageUrl", "direccion de la imagen", "La direccion debe iniciar con http:// o https://.")
+        ValidationError("imageUrl", "dirección de la imagen", "La dirección debe iniciar con http:// o https://.")
 
     data class SlotCapacityOutOfRange(val value: Int, val max: Int) :
         ValidationError("capacity", "capacidad", "La capacidad de la franja debe estar entre 0 y $max: $value.")

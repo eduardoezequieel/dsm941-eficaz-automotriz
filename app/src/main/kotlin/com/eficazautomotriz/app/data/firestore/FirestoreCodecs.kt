@@ -27,7 +27,7 @@ object FirestoreCodecs {
 
 /** A mandatory field is missing or has an unexpected type: the document is corrupt. */
 class MalformedDocumentException(field: String, detail: String) :
-    IllegalStateException("Campo '$field' invalido en el documento: $detail")
+    IllegalStateException("Campo '$field' inválido en el documento: $detail")
 
 private fun Map<String, Any?>.required(key: String): Any =
     this[key] ?: throw MalformedDocumentException(key, "ausente o nulo")
@@ -39,10 +39,10 @@ fun Map<String, Any?>.stringOrNull(key: String): String? =
     this[key]?.let { it as? String ?: throw MalformedDocumentException(key, "se esperaba texto") }
 
 fun Map<String, Any?>.int(key: String): Int =
-    (required(key) as? Number ?: throw MalformedDocumentException(key, "se esperaba numero")).toInt()
+    (required(key) as? Number ?: throw MalformedDocumentException(key, "se esperaba número")).toInt()
 
 fun Map<String, Any?>.intOrNull(key: String): Int? =
-    this[key]?.let { (it as? Number ?: throw MalformedDocumentException(key, "se esperaba numero")).toInt() }
+    this[key]?.let { (it as? Number ?: throw MalformedDocumentException(key, "se esperaba número")).toInt() }
 
 fun Map<String, Any?>.boolean(key: String): Boolean =
     required(key) as? Boolean ?: throw MalformedDocumentException(key, "se esperaba booleano")

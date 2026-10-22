@@ -136,9 +136,9 @@ class AppointmentService(
         now: LocalDateTime,
     ): Outcome<Appointment> {
         val vehicle = vehicles.findById(vehicleId)
-            ?: return fail("request", DomainError.NotFound("vehiculo", vehicleId))
+            ?: return fail("request", DomainError.NotFound("vehículo", vehicleId))
 
-        val permission = requireOwnershipOrStaff("request", actor, vehicle.ownerId, "agendar sobre el vehiculo $vehicleId")
+        val permission = requireOwnershipOrStaff("request", actor, vehicle.ownerId, "agendar sobre el vehículo $vehicleId")
         if (permission is Outcome.Failure) return permission
 
         if (serviceTypes.findById(serviceTypeId) == null) {
@@ -274,13 +274,13 @@ class AppointmentService(
      * client can still see why it was moved; the slot was already occupied while RESCHEDULED.
      */
     fun acceptReschedule(actor: User, appointmentId: String): Outcome<Appointment> =
-        findRescheduledOf("acceptReschedule", actor, appointmentId, "aceptar la reprogramacion").flatMap { appointment ->
+        findRescheduledOf("acceptReschedule", actor, appointmentId, "aceptar la reprogramación").flatMap { appointment ->
             Outcome.success(appointments.save(appointment.copy(status = AppointmentStatus.CONFIRMED)))
         }
 
     /** The client declines the new date: the appointment is cancelled and the slot freed. */
     fun declineReschedule(actor: User, appointmentId: String): Outcome<Appointment> =
-        findRescheduledOf("declineReschedule", actor, appointmentId, "rechazar la reprogramacion").flatMap { appointment ->
+        findRescheduledOf("declineReschedule", actor, appointmentId, "rechazar la reprogramación").flatMap { appointment ->
             Outcome.success(appointments.save(appointment.copy(status = AppointmentStatus.CANCELLED)))
         }
 
