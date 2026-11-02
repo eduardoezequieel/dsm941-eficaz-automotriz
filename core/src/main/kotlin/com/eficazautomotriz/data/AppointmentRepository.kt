@@ -2,6 +2,7 @@ package com.eficazautomotriz.data
 
 import com.eficazautomotriz.domain.model.Appointment
 import com.eficazautomotriz.domain.model.enums.AppointmentStatus
+import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
 interface AppointmentRepository : Repository<Appointment> {
@@ -18,4 +19,24 @@ interface AppointmentRepository : Repository<Appointment> {
      * clients' appointments (Firestore keeps it as per-slot counters).
      */
     fun occupancyOn(date: LocalDate): Map<String, Int>
+
+    /**
+     * Live version of [findByClient]. Declared on this interface because the in-memory
+     * repository emits it from a MutableStateFlow; use cases stay synchronous.
+     * Firestore must filter by clientId so the list rule accepts the query.
+     */
+    fun observeByClient(clientId: String): Flow<List<Appointment>>
+
+    /**
+     * Live version of findByStatus(PENDING). A client query filtered only by status
+     * is denied by firestore.rules; staff may listen.
+     */
+    fun observePending(): Flow<List<Appointment>>
+
+    /**
+     * Every appointment. Staff panel listens here so a cancellation of a confirmed
+     * appointment updates the agenda, not only the pending list. Rules allow the
+     * unfiltered list for staff and deny it for a client.
+     */
+    fun observeAll(): Flow<List<Appointment>>
 }
