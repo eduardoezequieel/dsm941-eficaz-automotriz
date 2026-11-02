@@ -75,6 +75,7 @@ dependencies {
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.coroutines.test)
     testRuntimeOnly(libs.junit.launcher)
 
     // JVM screenshot harness (ui/shots, opt-in with -Pshots): Robolectric + Compose UI test.
