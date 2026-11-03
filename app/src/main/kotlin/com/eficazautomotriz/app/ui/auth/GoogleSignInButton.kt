@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.eficazautomotriz.app.ui.components.OutlinedNavyButton
+import com.eficazautomotriz.app.viewmodel.googleSignInMessage
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -46,8 +47,7 @@ fun GoogleSignInButton(
             val token = account?.idToken
             if (token != null) onIdToken(token) else onError("Google no devolvió un token de identidad.")
         } catch (e: ApiException) {
-            // 12501 = the user closed the picker: not an error worth showing.
-            if (e.statusCode != USER_CANCELLED) onError("No se pudo iniciar sesión con Google (código ${e.statusCode}).")
+            googleSignInMessage(e.statusCode)?.let(onError)
         }
     }
     OutlinedNavyButton(
@@ -57,5 +57,3 @@ fun GoogleSignInButton(
         modifier = Modifier.fillMaxWidth(),
     )
 }
-
-private const val USER_CANCELLED = 12501
