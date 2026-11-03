@@ -24,6 +24,12 @@ interface AuthGateway {
     suspend fun sendPasswordReset(email: String)
 
     fun signOut()
+
+    /**
+     * Calls [onChange] with the current uid and again whenever it changes (sign-in, sign-out,
+     * revocation). The returned function removes the listener. Existing methods keep their signatures.
+     */
+    fun observeUid(onChange: (String?) -> Unit): () -> Unit
 }
 
 /** Gateway failure whose message is already user-facing Spanish (used by non-Firebase gateways). */
