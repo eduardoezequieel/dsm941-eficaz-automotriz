@@ -55,6 +55,23 @@ class InMemoryAuthGatewayTest {
     }
 
     @Test
+    fun `uid listener hears the current uid and a later sign-out`() = runBlocking {
+        val local = InMemoryAuthGateway(
+            users,
+            mapOf("Cliente@Demo.test" to InMemoryAuthGateway.Account("Demo1234", "USR-001")),
+            signedInUid = "USR-001",
+        )
+        val seen = mutableListOf<String?>()
+        val stop = local.observeUid { seen += it }
+        assertEquals(listOf("USR-001"), seen)
+        local.signOut()
+        assertEquals(listOf("USR-001", null), seen)
+        stop()
+        assertEquals("USR-001", local.signInWithEmail("cliente@demo.test", "Demo1234"))
+        assertEquals(listOf("USR-001", null), seen)
+    }
+
+    @Test
     fun `starts signed in when asked and signs out`() {
         val signedIn = InMemoryAuthGateway(users, emptyMap(), signedInUid = "USR-001")
         assertEquals("USR-001", signedIn.currentUid())
