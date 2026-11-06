@@ -70,6 +70,12 @@ class FirebaseAuthGateway(
 
     override fun signOut() = auth.signOut()
 
+    override fun observeUid(onChange: (String?) -> Unit): () -> Unit {
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth -> onChange(firebaseAuth.currentUser?.uid) }
+        auth.addAuthStateListener(listener)
+        return { auth.removeAuthStateListener(listener) }
+    }
+
     private suspend fun saveProfile(user: User) {
         withContext(Dispatchers.IO) { users.save(user) }
     }

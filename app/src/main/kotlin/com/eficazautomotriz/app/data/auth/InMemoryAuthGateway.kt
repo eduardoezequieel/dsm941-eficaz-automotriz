@@ -24,19 +24,28 @@ class InMemoryAuthGateway(
 
     private val lock = Any()
     private val accounts = accounts.mapKeys { it.key.lowercase() }.toMutableMap()
+    private val uidListeners = mutableListOf<(String?) -> Unit>()
     private var current: String? = signedInUid
 
     override fun currentUid(): String? = synchronized(lock) { current }
 
-    override suspend fun signInWithEmail(email: String, password: String): String = synchronized(lock) {
-        val account = accounts[email.trim().lowercase()]
-        if (account == null || account.password != password) throw AuthFailure(INVALID_CREDENTIALS)
-        current = account.uid
-        account.uid
+    override suspend fun signInWithEmail(email: String, password: String): String {
+        val uid = synchronized(lock) {
+            val account = accounts[email.trim().lowercase()]
+            if (account == null || account.password != password) throw AuthFailure(INVALID_CREDENTIALS)
+            current = account.uid
+            account.uid
+        }
+        publishUid(uid)
+        return uid
     }
 
     override suspend fun registerWithEmail(name: String, phone: String, email: String, password: String): String =
-        withContext(io) { register(name, phone, email, password) }
+        withContext(io) {
+            val uid = register(name, phone, email, password)
+            publishUid(uid)
+            uid
+        }
 
     private fun register(name: String, phone: String, email: String, password: String): String =
         synchronized(lock) {
@@ -59,7 +68,24 @@ class InMemoryAuthGateway(
         }
     }
 
-    override fun signOut() = synchronized(lock) { current = null }
+    override fun signOut() {
+        synchronized(lock) { current = null }
+        publishUid(null)
+    }
+
+    override fun observeUid(onChange: (String?) -> Unit): () -> Unit {
+        val snapshot = synchronized(lock) {
+            uidListeners.add(onChange)
+            current
+        }
+        onChange(snapshot)
+        return { synchronized(lock) { uidListeners.remove(onChange) } }
+    }
+
+    private fun publishUid(uid: String?) {
+        val listeners = synchronized(lock) { uidListeners.toList() }
+        listeners.forEach { it(uid) }
+    }
 
     private companion object {
         const val INVALID_CREDENTIALS = "Correo o contraseña incorrectos."
