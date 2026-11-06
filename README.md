@@ -1,6 +1,6 @@
 # Eficaz Automotriz · Etapa 3 — App Android
 
-Entrega: **18 de octubre de 2026**.
+Entrega: **8 de noviembre de 2026**.
 
 App del taller hecha con Jetpack Compose y Firebase. Las reglas de negocio están en el módulo `:core` (Kotlin puro) y las pantallas en `:app`. Las rutas `ui/` y `viewmodel/` de este documento cuelgan de `app/src/main/kotlin/com/eficazautomotriz/app/`; las de `core/`, de `core/src/main/kotlin/com/eficazautomotriz/`.
 
@@ -53,7 +53,7 @@ Con `demo.inMemory=true`, la compilación **debug** usa los repositorios en memo
 JDK 17 y Android SDK 35 (`minSdk` 26).
 
 ```
-./gradlew :core:test :app:testDebugUnitTest   # 171 + 152 pruebas, sin Firebase ni Cloudinary
+./gradlew :core:test :app:testDebugUnitTest   # 171 + 187 pruebas, sin Firebase ni Cloudinary
 ./gradlew :app:assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -108,3 +108,15 @@ Cuentas en el proyecto Firebase `eficaz-automotriz` (ficticias): `cliente.demo@e
 - Crear vehículos, citas e ids usa transacciones de Firestore: sin conexión fallan en lugar de quedar en cola.
 - Las reglas limitan los contadores de `ocupacion` a ±1 por escritura, pero no los atan a una cita concreta. El personal revisa la disponibilidad de nuevo al confirmar.
 - `GoogleSignIn` está marcado como deprecated por Google, aunque sigue funcionando.
+
+## 7. Firebase
+
+La investigación del foro está en [docs/etapa3/foro2/INVESTIGACION-FIREBASE.pdf](docs/etapa3/foro2/INVESTIGACION-FIREBASE.pdf).
+
+**Colecciones.** Nueve de negocio: `usuarios`, `vehiculos`, `citas`, `servicios`, `evidencias`, `estadosMantenimiento`, `tiposServicio`, `tiposMantenimiento` y `configFranjas`. Tres de apoyo, sin clase de dominio: `contadores`, `placas` y `ocupacion`. El id de `usuarios/{uid}` es el `uid` de Authentication. El registro guarda `role = CLIENT`.
+
+**Reglas.** Se publican `firestore.rules`, fuera del modo de prueba. Con sesión, el cliente lista `vehiculos` por `ownerId` y `citas` por `clientId`. Lee `servicios` y `evidencias` cuando el vehículo o la orden son suyos, y no los escribe. Crear `usuarios/{uid}` exige `role = CLIENT`, y el cliente no puede cambiarse el rol. Los catálogos se leen con sesión y los escribe solo el personal. En `contadores` el cliente solo suma 1. `placas` se crea y se borra, no se actualiza. `ocupacion` se mueve de a uno.
+
+**Tiempo real.** Mis citas escucha `observeByClient`. El panel del personal combina `observePending` y `observeAll`. El detalle del servicio combina `observeById` y `observeByOrder`. Esas tres pantallas se actualizan si otro dispositivo cambia el dato mientras siguen abiertas.
+
+Se leen al abrir, sin listener: el inicio del cliente, los vehículos, el historial, el perfil, los reportes, los catálogos, las franjas, la recepción, el cierre, el alta de una cita y la subida de una evidencia. El panel no escucha `servicios` (relee las órdenes al armar la pantalla). El detalle no escucha `citas` (relee la cita vinculada). El login no escucha Firestore: la sesión la sostiene Authentication.
