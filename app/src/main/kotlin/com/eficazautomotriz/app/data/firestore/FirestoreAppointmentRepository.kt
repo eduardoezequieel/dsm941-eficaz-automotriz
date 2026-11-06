@@ -7,6 +7,7 @@ import com.eficazautomotriz.domain.model.enums.AppointmentStatus
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
 /**
@@ -27,6 +28,14 @@ class FirestoreAppointmentRepository(db: FirebaseFirestore) :
     override fun findByVehicle(vehicleId: String): List<Appointment> = query("vehicleId" to vehicleId)
 
     override fun findByStatus(status: AppointmentStatus): List<Appointment> = query("status" to status.name)
+
+    override fun observeByClient(clientId: String): Flow<List<Appointment>> =
+        observe(col.whereEqualTo("clientId", clientId))
+
+    override fun observePending(): Flow<List<Appointment>> =
+        observe(col.whereEqualTo("status", AppointmentStatus.PENDING.name))
+
+    override fun observeAll(): Flow<List<Appointment>> = observe(col)
 
     /** ISO dates (yyyy-mm-dd) sort the same as text and as dates. */
     override fun findByDateRange(from: LocalDate, to: LocalDate): List<Appointment> = run(

@@ -5,6 +5,7 @@ import com.eficazautomotriz.data.ServiceOrderRepository
 import com.eficazautomotriz.domain.model.ServiceOrder
 import com.eficazautomotriz.domain.model.enums.ServiceStatus
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.Flow
 
 class FirestoreServiceOrderRepository(db: FirebaseFirestore) :
     FirestoreRepository<ServiceOrder>(
@@ -15,4 +16,6 @@ class FirestoreServiceOrderRepository(db: FirebaseFirestore) :
     override fun findByVehicle(vehicleId: String): List<ServiceOrder> = query("vehicleId" to vehicleId)
 
     override fun findByStatus(status: ServiceStatus): List<ServiceOrder> = query("status" to status.name)
+
+    override fun observeById(id: String): Flow<List<ServiceOrder>> = observeDocument(id)
 }

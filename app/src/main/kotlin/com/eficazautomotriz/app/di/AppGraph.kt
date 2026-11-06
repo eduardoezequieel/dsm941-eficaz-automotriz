@@ -28,6 +28,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Hand-wired dependency graph (no Hilt or Koin), equivalent to Stage 2's
@@ -153,6 +154,9 @@ class AppGraph(context: Context, demoBackend: DataBackend? = null) {
                 SeedData.loadCatalogs(repositories.serviceTypes, repositories.maintenanceTypes, repositories.timeSlots)
             }
             true
+        } catch (e: CancellationException) {
+            // Same rule as the realtime collectors: cancellation is not a catalog failure.
+            throw e
         } catch (e: Exception) {
             errorLogger.error("AppGraph.ensureCatalogs", e::class.simpleName ?: "Exception", e.message ?: "no detail")
             false

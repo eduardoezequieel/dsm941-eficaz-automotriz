@@ -1,14 +1,22 @@
 package com.eficazautomotriz.app.viewmodel
 
+import androidx.lifecycle.viewModelScope
 import com.eficazautomotriz.app.di.AppGraph
 import com.eficazautomotriz.app.ui.UiState
+import com.eficazautomotriz.domain.error.DomainError
 import com.eficazautomotriz.domain.error.Outcome
 import com.eficazautomotriz.domain.model.Appointment
 import com.eficazautomotriz.domain.model.User
 import com.eficazautomotriz.domain.model.enums.AppointmentStatus
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * The two P5 tabs. "Próximas" holds every card f5 draws there, including a rejection
@@ -45,21 +53,47 @@ class AppointmentsViewModel(graph: AppGraph, private val actor: User) : EficazVi
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
-    /** Called when the screen resumes; existing data is refreshed without flickering. */
+    /** One listener per visit. A new [load] replaces it (resume, retry, or after a write). */
+    private var observeJob: Job? = null
+
+    /**
+     * Called when the screen resumes. Subscribes to this client's appointments.
+     * Row building (vehicles, names) runs upstream of [catch], so a denied or
+     * offline read after a snapshot does not escape the collector. [catch]
+     * rethrows [kotlinx.coroutines.CancellationException]. A failure keeps the
+     * last ready list and surfaces the system message; otherwise it publishes
+     * [UiState.Error].
+     */
     fun load() {
         if (_state.value !is UiState.Ready) _state.value = UiState.Loading
-        run({ outcome ->
-            _state.value = when (outcome) {
-                is Outcome.Success -> UiState.Ready(outcome.value)
-                is Outcome.Failure -> UiState.Error(outcome.error.userMessage())
-            }
-        }) {
-            val rows = graph.appointmentRows(
-                graph.appointmentService.listVisibleTo(actor),
-                graph.vehicleService.listVisibleTo(actor),
-            )
-            Outcome.success(splitClientAppointments(rows))
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
+            graph.repositories.appointments.observeByClient(actor.id)
+                .map { appointments ->
+                    val rows = graph.appointmentRows(
+                        appointments,
+                        graph.vehicleService.listVisibleTo(actor),
+                    )
+                    splitClientAppointments(rows)
+                }
+                .flowOn(graph.io)
+                .catch { error ->
+                    if (error is CancellationException) throw error
+                    onListenerError(error)
+                }
+                .collect { ready -> _state.value = UiState.Ready(ready) }
         }
+    }
+
+    private fun onListenerError(error: Throwable) {
+        graph.errorLogger.error(
+            this::class.simpleName ?: "ViewModel",
+            error::class.simpleName ?: "Exception",
+            error.message.orEmpty(),
+        )
+        val text = DomainError.NotFound(SYSTEM_ENTITY, error.message ?: "sin detalle").userMessage()
+        if (_state.value is UiState.Ready) _message.value = text
+        else _state.value = UiState.Error(text)
     }
 
     fun cancel(appointmentId: String) =

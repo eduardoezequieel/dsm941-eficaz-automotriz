@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.eficazautomotriz.app.di.AppGraph
 import com.eficazautomotriz.domain.error.DomainError
 import com.eficazautomotriz.domain.error.Outcome
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -24,6 +26,7 @@ abstract class EficazViewModel(protected val graph: AppGraph) : ViewModel() {
         viewModelScope.launch {
             val result = withContext(graph.io) {
                 runCatching(block).getOrElse { failure ->
+                    if (failure is CancellationException) throw failure
                     graph.errorLogger.error(
                         this@EficazViewModel::class.simpleName ?: "ViewModel",
                         failure::class.simpleName ?: "Exception",
@@ -32,7 +35,7 @@ abstract class EficazViewModel(protected val graph: AppGraph) : ViewModel() {
                     Outcome.failure(DomainError.NotFound(SYSTEM_ENTITY, failure.message ?: "sin detalle"))
                 }
             }
-            onResult(result)
+            if (isActive) onResult(result)
         }
 
     protected fun today(): LocalDate = LocalDate.now()
@@ -44,10 +47,14 @@ abstract class EficazViewModel(protected val graph: AppGraph) : ViewModel() {
     }
 }
 
-/** Text for the user: business errors as they are; system errors with context. */
+/**
+ * Text for the user. A business [DomainError] keeps its Spanish message. A system failure
+ * (network, rules, corrupt data) shows one generic sentence; [EficazViewModel.run] already
+ * wrote the exception text to the logger, and that text is not repeated here.
+ */
 fun DomainError.userMessage(): String =
     if (this is DomainError.NotFound && entity == EficazViewModel.SYSTEM_ENTITY) {
-        "No se pudo completar la operación. Revise su conexión e intente de nuevo. ($id)"
+        "No se pudo completar la operación. Revise su conexión e intente de nuevo."
     } else {
         message
     }

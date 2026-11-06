@@ -10,6 +10,9 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import java.util.concurrent.ExecutionException
 
 /**
@@ -94,6 +97,51 @@ abstract class FirestoreRepository<T : Identifiable>(
         run(filters.fold(col as Query) { q, (field, value) -> q.whereEqualTo(field, value) })
 
     protected fun run(query: Query): List<T> = Tasks.await(query.get()).documents.map(fromDoc)
+
+    /**
+     * Live query. Documents go through [fromDoc], the same mapper as [run].
+     * A listener error (rules, or the session already closed) closes the flow;
+     * the caller keeps the last screen state. [awaitClose] removes the registration.
+     */
+    protected fun observe(query: Query): Flow<List<T>> = callbackFlow {
+        val registration = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            if (snapshot == null) return@addSnapshotListener
+            val parsed = try {
+                snapshot.documents.map(fromDoc)
+            } catch (e: Exception) {
+                close(e)
+                return@addSnapshotListener
+            }
+            trySend(parsed)
+        }
+        awaitClose { registration.remove() }
+    }
+
+    /**
+     * Single-document listener wrapped as a list of 0 or 1, so callers stay on Flow<List<T>>.
+     * Uses the get rule. A missing document emits an empty list.
+     */
+    protected fun observeDocument(id: String): Flow<List<T>> = callbackFlow {
+        val registration = col.document(id).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            if (snapshot == null) return@addSnapshotListener
+            val parsed = try {
+                if (snapshot.exists()) listOf(fromDoc(snapshot)) else emptyList()
+            } catch (e: Exception) {
+                close(e)
+                return@addSnapshotListener
+            }
+            trySend(parsed)
+        }
+        awaitClose { registration.remove() }
+    }
 
     /** `Tasks.await` that rethrows the Firestore cause instead of the `ExecutionException` wrapper. */
     protected fun <R> await(task: Task<R>): R = try {
