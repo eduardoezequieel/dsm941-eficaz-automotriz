@@ -109,7 +109,15 @@ class AuthViewModel(graph: AppGraph) : EficazViewModel(graph) {
     fun updateResetEmail(email: String) =
         _state.update { state -> state.copy(reset = state.reset?.copy(email = email, error = null)) }
 
-    fun closePasswordReset() = _state.update { it.copy(reset = null) }
+    /**
+     * Closes the dialog. An error that was only on the form moves to [AuthState.notice]
+     * so the login screen can show it after the dialog is gone. A notice already set
+     * (the reset email was sent) stays until the screen consumes it.
+     */
+    fun closePasswordReset() = _state.update { state ->
+        val pendingError = state.reset?.error
+        state.copy(reset = null, notice = pendingError ?: state.notice)
+    }
 
     fun consumeNotice() = _state.update { it.copy(notice = null) }
 

@@ -39,12 +39,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -155,28 +157,29 @@ private val staffTabs = listOf(
 
 private val tabRoutes = (Routes.CLIENT_TABS + Routes.STAFF_TABS).toSet()
 
-/** Navigates leaving `route` as the only back stack entry (session change). */
-private fun NavHostController.resetTo(route: String) = navigate(route) {
-    popUpTo(graph.id) { inclusive = true }
-    launchSingleTop = true
+@Composable
+private fun SessionScaffold(graph: AppGraph, session: SessionViewModel, state: SessionState) {
+    val scopeId by session.scopeId.collectAsStateWithLifecycle()
+    // One NavHost and one ViewModelStore per signed-in uid. Leaving the key clears every
+    // screen ViewModel, including ones the tab bar had saved with saveState / restoreState.
+    key(scopeId) {
+        val sessionStore = remember { SessionViewModelStoreOwner() }
+        DisposableEffect(sessionStore) {
+            onDispose { sessionStore.clear() }
+        }
+        CompositionLocalProvider(LocalViewModelStoreOwner provides sessionStore) {
+            SessionNav(graph, session, state)
+        }
+    }
 }
 
 @Composable
-private fun SessionScaffold(graph: AppGraph, session: SessionViewModel, state: SessionState) {
+private fun SessionNav(graph: AppGraph, session: SessionViewModel, state: SessionState) {
     val user = (state as? SessionState.SignedIn)?.user
     val navController = rememberNavController()
     val startDestination = remember { homeOf(user) }
     val snackbar = remember { SnackbarHostState() }
     val vmFactory = remember(graph, user) { EficazViewModelFactory(graph, user) }
-
-    // User change (login, logout, missing profile): the whole back stack is cleared.
-    var shownUserId by rememberSaveable { mutableStateOf(user?.id) }
-    LaunchedEffect(user?.id) {
-        if (user?.id != shownUserId) {
-            shownUserId = user?.id
-            navController.resetTo(homeOf(user))
-        }
-    }
 
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route

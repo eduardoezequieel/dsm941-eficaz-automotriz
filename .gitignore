@@ -33,6 +33,3 @@ core/build/
 *.aab
 captures/
 .externalNativeBuild/
-
-# Archivos generados por VS Code / herramientas de compilación
-/core/bin/

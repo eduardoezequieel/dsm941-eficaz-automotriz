@@ -91,7 +91,7 @@ fun LoginScreen(
             AuthTab.LOGIN -> LoginFields(
                 form = state.login,
                 busy = state.busy,
-                message = state.message ?: sessionMessage,
+                message = state.message ?: state.notice ?: sessionMessage,
                 enabled = true,
                 onChange = vm::updateLogin,
                 onSubmit = vm::signIn,
