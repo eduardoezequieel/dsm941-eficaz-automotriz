@@ -2,6 +2,7 @@ plugins { alias(libs.plugins.kotlin.jvm) }
 group = "com.eficazautomotriz"; version = "3.0.0"
 kotlin { jvmToolchain(17) }
 dependencies {
+    implementation(libs.coroutines.core)
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

@@ -3,6 +3,7 @@ package com.eficazautomotriz.data.memory
 import com.eficazautomotriz.data.AppointmentRepository
 import com.eficazautomotriz.domain.model.Appointment
 import com.eficazautomotriz.domain.model.enums.AppointmentStatus
+import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
 class InMemoryAppointmentRepository : InMemoryRepository<Appointment>("APT"), AppointmentRepository {
@@ -21,4 +22,12 @@ class InMemoryAppointmentRepository : InMemoryRepository<Appointment>("APT"), Ap
 
     override fun occupancyOn(date: LocalDate): Map<String, Int> =
         findAll().filter { it.date == date && it.status.occupiesSlot }.groupingBy { it.slotId }.eachCount()
+
+    override fun observeByClient(clientId: String): Flow<List<Appointment>> =
+        snapshotWhere { it.clientId == clientId }
+
+    override fun observePending(): Flow<List<Appointment>> =
+        snapshotWhere { it.status == AppointmentStatus.PENDING }
+
+    override fun observeAll(): Flow<List<Appointment>> = snapshotAll()
 }
