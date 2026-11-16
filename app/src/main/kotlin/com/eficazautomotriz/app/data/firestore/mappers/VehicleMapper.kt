@@ -7,6 +7,7 @@ import com.eficazautomotriz.app.data.firestore.string
 import com.eficazautomotriz.domain.model.Vehicle
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [Vehicle] between `:core` domain models and the Firestore `vehiculos` collection. */
 object VehicleMapper {
     const val COLLECTION = "vehiculos"
 

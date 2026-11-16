@@ -5,6 +5,7 @@ import com.eficazautomotriz.app.data.firestore.string
 import com.eficazautomotriz.domain.model.MaintenanceRecord
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [MaintenanceRecord] between `:core` domain models and the Firestore `estadosMantenimiento` collection. */
 object MaintenanceRecordMapper {
     const val COLLECTION = "estadosMantenimiento"
 

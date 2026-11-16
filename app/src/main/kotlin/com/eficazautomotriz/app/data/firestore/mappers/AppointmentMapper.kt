@@ -9,6 +9,7 @@ import com.eficazautomotriz.app.data.firestore.stringOrNull
 import com.eficazautomotriz.domain.model.Appointment
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [Appointment] between `:core` domain models and the Firestore `citas` collection. */
 object AppointmentMapper {
     const val COLLECTION = "citas"
 
