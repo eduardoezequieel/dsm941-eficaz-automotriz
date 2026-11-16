@@ -2,16 +2,16 @@ package com.eficazautomotriz.domain.rules
 
 import com.eficazautomotriz.domain.model.enums.ServiceStatus
 
+/** Outcome of validating a service-order status transition or closure mileage. */
 sealed interface TransitionResult {
     data object Allowed : TransitionResult
     data class Denied(val reason: String) : TransitionResult
 }
 
 /**
- * Rule 3: governs how a service order advances.
- *
- * The cycle is linear: Received -> In progress -> Completed. No steps backward and no
- * transitions into the same state. Completed is terminal.
+ * Rule 3 (`docs/etapa2/REGLAS-Y-DECISIONES.md` §3.3 — "¿puede avanzar esta orden?"):
+ * "`COMPLETED` es terminal" and "el odómetro no decrece", enforcing a strict linear flow
+ * (`RECEIVED -> IN_PROGRESS -> COMPLETED`) and protecting maintenance calculations on closure.
  */
 class ServiceTransitionRule {
 
