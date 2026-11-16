@@ -6,6 +6,10 @@ import com.eficazautomotriz.domain.model.Evidence
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Firestore-backed [EvidenceRepository] storing photo URLs and stage metadata per service order.
+ * Exposes [observeByOrder] so the detail screen updates in real time as staff upload evidence.
+ */
 class FirestoreEvidenceRepository(db: FirebaseFirestore) :
     FirestoreRepository<Evidence>(db, EvidenceMapper.COLLECTION, "EVD", EvidenceMapper::toMap, EvidenceMapper::fromDoc),
     EvidenceRepository {
