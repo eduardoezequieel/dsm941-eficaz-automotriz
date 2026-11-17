@@ -44,10 +44,7 @@ private fun Modifier.buttonHeight(compact: Boolean): Modifier {
     return if (LocalDensity.current.fontScale <= 1.3f) heightIn(min = height, max = height) else heightIn(min = height)
 }
 
-/**
- * Material pads every button to a 48dp touch target, which would add 8dp of empty layout
- * around each 40dp button; the mockup density needs 44dp (still above the 44dp guideline).
- */
+/** Keeps every button's touch target at [EficazDimens.MinTouchTarget] (48dp) around the smaller visual height. */
 @Composable
 private fun TouchTarget(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides EficazDimens.MinTouchTarget, content = content)

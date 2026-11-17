@@ -1,5 +1,9 @@
 package com.eficazautomotriz.app.ui.components
 
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -116,15 +120,28 @@ fun HeaderAvatar(
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
+        // The 38dp square sits inside a 48dp touch target when it opens the account menu.
         Box(
-            Modifier
-                .size(EficazDimens.AvatarSize)
-                .clip(RoundedCornerShape(EficazDimens.AvatarRadius))
-                .background(EficazColors.NavyMid)
-                .then(if (menu != null) Modifier.clickable { open = true } else Modifier),
+            if (menu != null) {
+                Modifier
+                    .sizeIn(minWidth = EficazDimens.MinTouchTarget, minHeight = EficazDimens.MinTouchTarget)
+                    .clip(RoundedCornerShape(EficazDimens.AvatarRadius))
+                    .clickable(onClickLabel = "Abrir menú de la cuenta", role = Role.Button) { open = true }
+                    .semantics { contentDescription = "Cuenta, $initials" }
+            } else {
+                Modifier
+            },
             contentAlignment = Alignment.Center,
         ) {
-            Text(initials, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Box(
+                Modifier
+                    .size(EficazDimens.AvatarSize)
+                    .clip(RoundedCornerShape(EficazDimens.AvatarRadius))
+                    .background(EficazColors.NavyMid),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(initials, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            }
         }
         if (menu != null) {
             DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Color.White) {
