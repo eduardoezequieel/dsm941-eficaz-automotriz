@@ -282,7 +282,7 @@ private fun EficazBottomBar(tabs: List<Tab>, route: String?, onSelect: (String) 
         ) {
             tabs.forEach { tab ->
                 val selected = route == tab.route
-                val color = if (selected) EficazColors.Navy else EficazColors.TextMuted
+                val color = if (selected) EficazColors.Navy else EficazColors.TextSecondary
                 Column(
                     Modifier
                         .weight(1f)
