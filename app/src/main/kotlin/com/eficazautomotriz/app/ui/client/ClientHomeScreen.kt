@@ -327,7 +327,7 @@ private fun LastServiceCard(last: LastService, onClick: () -> Unit) {
             details,
             style = MaterialTheme.typography.bodySmall,
             color = EficazColors.TextSecondary,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         Spacer(Modifier.height(EficazDimens.SpaceSm))
