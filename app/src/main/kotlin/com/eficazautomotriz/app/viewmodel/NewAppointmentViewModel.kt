@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.update
 import java.time.DayOfWeek
 import java.time.LocalDate
 
+/** Sequential steps of the client appointment-booking wizard. */
 enum class AppointmentStep { VEHICLE, SERVICE, DATE, SLOT, SUMMARY, DONE }
 
 /** Slot of the chosen day, with a label explaining why it cannot be taken. */
@@ -27,6 +28,7 @@ data class SlotOption(val availability: SlotAvailability, val unavailableLabel: 
     val selectable: Boolean get() = availability.selectable
 }
 
+/** UI state for the multi-step appointment-booking wizard. */
 data class NewAppointmentState(
     val step: AppointmentStep = AppointmentStep.VEHICLE,
     val loading: Boolean = true,
