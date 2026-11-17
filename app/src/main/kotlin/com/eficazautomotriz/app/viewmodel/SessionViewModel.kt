@@ -21,6 +21,7 @@ internal const val SIGNED_OUT_SCOPE = "signed-out"
 /** Scope id of the navigation graph. Screen ViewModels are cleared when it changes. */
 internal fun navigationScopeId(signedInUserId: String?): String = signedInUserId ?: SIGNED_OUT_SCOPE
 
+/** Root authentication and domain-profile state driving top-level navigation. */
 sealed interface SessionState {
     data object Checking : SessionState
     data class SignedOut(val message: String? = null) : SessionState

@@ -14,12 +14,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Email/password credentials and field errors for the login tab. */
 data class LoginForm(
     val email: String = "",
     val password: String = "",
     val errors: FieldErrors = FieldErrors(),
 )
 
+/** New client account fields and validation errors for the sign-up tab. */
 data class RegisterForm(
     val name: String = "",
     val phone: String = "",
@@ -36,6 +38,7 @@ data class PasswordResetForm(
     val busy: Boolean = false,
 )
 
+/** UI state for P1 authentication, combining login, sign-up, password reset, and one-shot events. */
 data class AuthState(
     val login: LoginForm = LoginForm(),
     val register: RegisterForm = RegisterForm(),
