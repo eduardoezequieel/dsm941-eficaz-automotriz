@@ -51,8 +51,8 @@ object EficazDimens {
     val ButtonHeight = 40.dp
     /** Buttons inside cards ("Ver detalle", "Confirmar"). */
     val ButtonHeightCompact = 36.dp
-    /** Touch target of compact controls (visual size can be smaller). */
-    val MinTouchTarget = 44.dp
+    /** Touch target of every tappable control (Material/WCAG 48dp); the visual size can be smaller. */
+    val MinTouchTarget = 48.dp
     val ButtonPaddingHorizontal = 12.dp
     val FabSize = 52.dp
     val FabRadius = 14.dp
