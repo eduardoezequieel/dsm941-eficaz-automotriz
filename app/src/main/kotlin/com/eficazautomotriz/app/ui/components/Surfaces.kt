@@ -1,5 +1,6 @@
 package com.eficazautomotriz.app.ui.components
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -155,7 +156,7 @@ fun PlaceholderThumb(label: String, modifier: Modifier = Modifier, onClick: (() 
             .heightIn(min = EficazDimens.ThumbHeight)
             .clip(RoundedCornerShape(EficazDimens.ThumbRadius))
             .background(EficazColors.PlaceholderTile)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(onClickLabel = "Ver foto", role = Role.Button, onClick = onClick) else Modifier)
             .padding(horizontal = EficazDimens.SpaceSm, vertical = EficazDimens.SpaceXs),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
