@@ -26,7 +26,7 @@ object EficazColors {
     val NeutralPill = Color(0xFFEFF2F4)
 
     val TextPrimary = Color(0xFF16242E)
-    val TextSecondary = Color(0xFF657782)
+    val TextSecondary = Color(0xFF5A6C77)
     /** Unselected bottom navigation items. */
     val TextMuted = Color(0xFF8D9CA6)
     /** Subtitle inside the navy header. */

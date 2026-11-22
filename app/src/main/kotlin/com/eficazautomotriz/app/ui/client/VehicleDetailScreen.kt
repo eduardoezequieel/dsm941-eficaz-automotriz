@@ -169,7 +169,7 @@ private fun DetailContent(
                     item { SectionHeader("Plan de mantenimiento preventivo") }
                     item {
                         if (report.lines.isEmpty()) {
-                            EmptyCard("Catálogo de mantenimiento no configurado.")
+                            EmptyCard("El taller aún no ha configurado el plan de mantenimiento.")
                         } else {
                             MaintenancePlanCard(report.lines)
                         }

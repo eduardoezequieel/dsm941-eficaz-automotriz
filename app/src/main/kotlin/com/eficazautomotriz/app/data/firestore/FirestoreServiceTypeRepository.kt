@@ -5,6 +5,7 @@ import com.eficazautomotriz.data.ServiceTypeRepository
 import com.eficazautomotriz.domain.model.ServiceType
 import com.google.firebase.firestore.FirebaseFirestore
 
+/** Firestore-backed [ServiceTypeRepository] for workshop service catalog entries and active filtering. */
 class FirestoreServiceTypeRepository(db: FirebaseFirestore) :
     FirestoreRepository<ServiceType>(
         db, ServiceTypeMapper.COLLECTION, "SVT", ServiceTypeMapper::toMap, ServiceTypeMapper::fromDoc,

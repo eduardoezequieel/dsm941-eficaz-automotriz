@@ -7,6 +7,7 @@ import com.eficazautomotriz.app.data.firestore.string
 import com.eficazautomotriz.domain.model.Evidence
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [Evidence] between `:core` domain models and the Firestore `evidencias` collection. */
 object EvidenceMapper {
     const val COLLECTION = "evidencias"
 

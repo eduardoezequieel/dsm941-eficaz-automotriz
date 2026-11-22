@@ -5,11 +5,13 @@ import com.eficazautomotriz.domain.model.Appointment
 import com.eficazautomotriz.domain.model.TimeSlot
 import java.time.LocalDate
 
+/** Outcome of checking whether a time slot can accept another appointment on a date. */
 sealed interface AvailabilityResult {
     data object Available : AvailabilityResult
     data class Unavailable(val reason: UnavailabilityReason) : AvailabilityResult
 }
 
+/** Business reason why a time slot cannot accept an appointment, ordered by evaluation priority. */
 enum class UnavailabilityReason(val label: String) {
     SLOT_DISABLED("la franja está deshabilitada"),
     DATE_IN_PAST("la fecha ya paso"),
@@ -18,10 +20,9 @@ enum class UnavailabilityReason(val label: String) {
 }
 
 /**
- * Rule 1: decides whether a slot admits one more appointment on a given date.
- *
- * Stateless and free of dependencies: it receives everything as parameters and returns a result.
- * It does not query repositories, it does not print, and it does not throw.
+ * Rule 1 (`docs/etapa2/REGLAS-Y-DECISIONES.md` §3.1 — "¿cabe una cita más en esta franja?"):
+ * "devuelve en la primera condición que falla" and "nunca llama a `LocalDate.now()`" so callers
+ * pass `today` explicitly, keeping availability checks stateless and deterministic.
  */
 class AppointmentAvailabilityRule {
 
