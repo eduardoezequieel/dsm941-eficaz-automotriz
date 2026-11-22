@@ -136,7 +136,7 @@ Las tres reglas de negocio, las decisiones de diseño y los límites de validaci
 | Sesión al arrancar y cierre en ambos roles | `viewmodel/SessionViewModel.kt` y Perfil |
 | Sin credenciales en el repo | Solo las plantillas `.example` |
 
-## 5. Guion de demo (5 minutos)
+## 5. Recorrido funcional (5 minutos)
 
 1. **Cliente.** Pide una cita: vehículo, tipo de servicio, fecha y franja libre.
 2. **Personal.** Confirma la cita en el panel.
