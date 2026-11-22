@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/** UI state for updating a vehicle's odometer reading. */
 data class MileageState(
     val vehicle: Vehicle? = null,
     val loadError: String? = null,
