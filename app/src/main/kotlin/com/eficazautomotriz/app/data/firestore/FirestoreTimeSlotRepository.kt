@@ -6,6 +6,10 @@ import com.eficazautomotriz.domain.model.TimeSlot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.DayOfWeek
 
+/**
+ * Firestore-backed [TimeSlotRepository] for configurable booking slots.
+ * Sorts results in memory by start time so Firestore does not need a composite index.
+ */
 class FirestoreTimeSlotRepository(db: FirebaseFirestore) :
     FirestoreRepository<TimeSlot>(db, TimeSlotMapper.COLLECTION, "SLT", TimeSlotMapper::toMap, TimeSlotMapper::fromDoc),
     TimeSlotRepository {

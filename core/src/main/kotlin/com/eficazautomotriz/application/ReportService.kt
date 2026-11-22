@@ -16,6 +16,7 @@ data class ReportRow(
     val percentage: Double,
 )
 
+/** Aggregated report for a date range, ready to be rendered by charts or tables. */
 data class PeriodReport(
     val title: String,
     val from: LocalDate,
@@ -24,6 +25,7 @@ data class PeriodReport(
     val total: Int,
 )
 
+/** Workshop-wide snapshot of vehicles, appointments, orders, and maintenance statuses. */
 data class SystemSummary(
     val totalVehicles: Int,
     val appointmentsByStatus: Map<AppointmentStatus, Int>,
