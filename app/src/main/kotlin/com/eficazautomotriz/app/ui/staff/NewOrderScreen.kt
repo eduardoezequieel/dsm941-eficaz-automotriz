@@ -84,7 +84,7 @@ fun NewOrderScreen(
                 }
             }
             SectionLabel("Tipo de servicio", Modifier.padding(top = EficazDimens.SpaceSm))
-            if (state.serviceTypes.isEmpty()) MutedText("Catálogo no configurado.")
+            if (state.serviceTypes.isEmpty()) MutedText("Aún no hay tipos de servicio. Agréguelos en Perfil › Configuración.")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(EficazDimens.SpaceSm), verticalArrangement = Arrangement.spacedBy(EficazDimens.SpaceSm)) {
                 state.serviceTypes.forEach { type ->
                     val selected = state.serviceTypeId == type.id

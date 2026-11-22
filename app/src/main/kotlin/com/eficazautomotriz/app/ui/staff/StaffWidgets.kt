@@ -46,8 +46,9 @@ import com.eficazautomotriz.app.ui.theme.SectionLabelStyle
 
 /**
  * One-line text that shrinks its font (down to [minFontSize]) instead of wrapping or
- * ellipsizing. Counter labels such as "POR CONFIRMAR" use it. Card actions do not: f8
- * requires Confirmar / Reprogramar / Rechazar at full size.
+ * ellipsizing. Counter labels such as "POR CONFIRMAR" and the card actions use it. With a
+ * larger system font the floor scales down by the same factor, so the label can shrink back
+ * to its 100 % size but never below it, and it is never clipped.
  */
 @Composable
 internal fun FitText(
@@ -58,8 +59,10 @@ internal fun FitText(
     minFontSize: TextUnit = 10.sp,
     textAlign: TextAlign? = null,
 ) {
-    var fitted by remember(text, style) { mutableStateOf(style) }
-    var ready by remember(text, style) { mutableStateOf(false) }
+    val fontScale = LocalDensity.current.fontScale
+    val floor = if (fontScale > 1f) minFontSize / fontScale else minFontSize
+    var fitted by remember(text, style, fontScale) { mutableStateOf(style) }
+    var ready by remember(text, style, fontScale) { mutableStateOf(false) }
     Text(
         text,
         style = fitted,
@@ -70,7 +73,7 @@ internal fun FitText(
         modifier = modifier.drawWithContent { if (ready) drawContent() },
         onTextLayout = { layout ->
             val smaller = fitted.fontSize * 0.92f
-            if (layout.didOverflowWidth && smaller >= minFontSize) {
+            if (layout.didOverflowWidth && smaller >= floor) {
                 fitted = fitted.copy(
                     fontSize = smaller,
                     letterSpacing = if (fitted.letterSpacing.isSp) fitted.letterSpacing * 0.85f else fitted.letterSpacing,
@@ -148,17 +151,14 @@ internal fun CardActionButton(
     }
 }
 
-/** Full-size one-line label. It does not shrink; the row is sized so the word fits at 412dp. */
+/**
+ * One-line label: full size at 412dp and 100 % font (f8); on a narrower phone or with a larger
+ * system font it shrinks (see [FitText]) instead of being clipped ("Reprograma…").
+ */
 @Composable
 private fun ActionLabel(text: String, color: Color) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        color = color,
-        maxLines = 1,
-        softWrap = false,
-        overflow = TextOverflow.Clip,
-    )
+    val style = MaterialTheme.typography.labelLarge
+    FitText(text, style, color, minFontSize = style.fontSize * 0.8f)
 }
 
 /** f8 counter: white card, big navy number, uppercase gray label that never wraps. */
@@ -203,7 +203,9 @@ internal fun OptionPill(
             .background(if (selected) EficazColors.InfoBg else EficazColors.Surface)
             .border(EficazDimens.CardBorder, if (selected) EficazColors.Navy else EficazColors.FieldBorder, shape)
             .clickable(enabled = enabled, onClick = onClick)
+            .heightIn(min = EficazDimens.MinTouchTarget)
             .padding(horizontal = EficazDimens.SpaceMd, vertical = EficazDimens.SpaceSm),
+        verticalArrangement = Arrangement.Center,
     ) { content() }
 }
 

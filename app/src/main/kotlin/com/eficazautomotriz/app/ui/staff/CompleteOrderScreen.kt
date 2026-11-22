@@ -90,7 +90,7 @@ fun CompleteOrderScreen(
             state.mileageError?.let { FieldError(it) }
             SectionLabel("Mantenimientos realizados", Modifier.padding(top = EficazDimens.SpaceXs))
             if (state.maintenanceTypes.isEmpty()) {
-                MutedText("Catálogo de mantenimiento no configurado.")
+                MutedText("Aún no hay tipos de mantenimiento. Agréguelos en Perfil › Configuración.")
             } else {
                 EficazCard(contentPadding = PaddingValues(vertical = EficazDimens.SpaceXs)) {
                     state.maintenanceTypes.forEachIndexed { index, type ->

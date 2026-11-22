@@ -55,7 +55,7 @@ fun MaintenanceTypesTab(vm: CatalogViewModel) {
             UiState.Loading -> LoadingBox()
             is UiState.Error -> ErrorBox(current.message, onRetry = vm::load)
             is UiState.Ready -> if (current.data.maintenance.isEmpty()) {
-                MutedText("Catálogo de mantenimiento no configurado.")
+                MutedText("Aún no hay tipos de mantenimiento. Agregue el primero con el botón +.")
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(start = EficazDimens.ScreenPadding, end = EficazDimens.ScreenPadding, top = EficazDimens.ScreenPadding, bottom = 88.dp),
@@ -74,7 +74,7 @@ fun MaintenanceTypesTab(vm: CatalogViewModel) {
         }
         OrangeFab(
             onClick = vm::beginCreateMaintenance,
-            contentDescription = "Agregar",
+            contentDescription = "Agregar tipo de mantenimiento",
             modifier = Modifier.align(Alignment.BottomEnd).padding(EficazDimens.ScreenPadding),
         )
     }
