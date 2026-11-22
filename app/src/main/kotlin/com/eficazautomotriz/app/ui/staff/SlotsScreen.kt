@@ -71,7 +71,7 @@ fun SlotsScreen(vm: SlotsViewModel = viewModel(factory = LocalVmFactory.current)
             UiState.Loading -> LoadingBox()
             is UiState.Error -> ErrorBox(s.message, onRetry = vm::load)
             is UiState.Ready -> if (s.data.isEmpty()) {
-                MutedText("Catálogo de franjas no configurado.", Modifier.padding(EficazDimens.ScreenPadding))
+                MutedText("Aún no hay franjas horarias configuradas.", Modifier.padding(EficazDimens.ScreenPadding))
             } else {
                 LazyColumn(contentPadding = PaddingValues(EficazDimens.ScreenPadding), verticalArrangement = Arrangement.spacedBy(EficazDimens.SpaceSm)) {
                     s.data.forEach { day ->
