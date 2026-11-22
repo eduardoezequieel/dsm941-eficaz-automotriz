@@ -6,6 +6,7 @@ import com.eficazautomotriz.app.data.firestore.string
 import com.eficazautomotriz.domain.model.MaintenanceType
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [MaintenanceType] between `:core` domain models and the Firestore `tiposMantenimiento` collection. */
 object MaintenanceTypeMapper {
     const val COLLECTION = "tiposMantenimiento"
 

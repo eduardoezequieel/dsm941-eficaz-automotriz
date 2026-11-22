@@ -10,6 +10,7 @@ import com.eficazautomotriz.app.data.firestore.stringOrNull
 import com.eficazautomotriz.domain.model.ServiceOrder
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [ServiceOrder] between `:core` domain models and the Firestore `servicios` collection. */
 object ServiceOrderMapper {
     const val COLLECTION = "servicios"
 

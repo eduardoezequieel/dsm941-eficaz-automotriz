@@ -9,6 +9,7 @@ import com.eficazautomotriz.app.data.firestore.string
 import com.eficazautomotriz.domain.model.TimeSlot
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [TimeSlot] between `:core` domain models and the Firestore `configFranjas` collection. */
 object TimeSlotMapper {
     const val COLLECTION = "configFranjas"
 

@@ -1,5 +1,7 @@
 package com.eficazautomotriz.app.ui.auth
 
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -140,8 +142,8 @@ fun LoginScreen(
 fun FirebaseMissingScreen() {
     AuthFrame(tab = AuthTab.LOGIN, onTab = {}, enabled = false) {
         InfoBanner(
-            "Firebase no configurado: falta app/google-services.json. " +
-                "Descárguelo de la consola de Firebase y vuelva a compilar.",
+            "Esta versión de la aplicación no está conectada al servidor del taller. " +
+                "Avise al administrador del sistema.",
             tone = StatusTone.Danger,
         )
         LoginFields(
@@ -262,8 +264,10 @@ private fun LoginFields(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .clickable(enabled = fieldsEnabled, onClick = onForgotPassword)
-                .padding(vertical = EficazDimens.SpaceSm),
+                .clickable(enabled = fieldsEnabled, role = Role.Button, onClick = onForgotPassword)
+                .heightIn(min = EficazDimens.MinTouchTarget)
+                .wrapContentHeight(Alignment.CenterVertically)
+                .padding(vertical = EficazDimens.SpaceXs),
         )
     }
 }

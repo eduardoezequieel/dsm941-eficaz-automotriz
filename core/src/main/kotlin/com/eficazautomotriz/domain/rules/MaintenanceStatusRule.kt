@@ -2,6 +2,7 @@ package com.eficazautomotriz.domain.rules
 
 import com.eficazautomotriz.domain.model.enums.MaintenanceStatus
 
+/** Computed preventive-maintenance classification and remaining distance for one maintenance type. */
 data class MaintenanceEvaluation(
     val status: MaintenanceStatus,
     // null when there is no previous record: there is no baseline from which to project.
@@ -11,10 +12,9 @@ data class MaintenanceEvaluation(
 )
 
 /**
- * Rule 2: classifies the preventive maintenance of a vehicle.
- *
- * The result is always computed and never persisted: storing a derived value
- * leaves the door open for it to fall out of sync with the real mileage.
+ * Rule 2 (`docs/etapa2/REGLAS-Y-DECISIONES.md` §3.2 — "¿cómo está el mantenimiento preventivo?"):
+ * "todo lo vencido cae también dentro de la ventana de aviso", so OVERDUE is checked before
+ * DUE_SOON; results are always recomputed and never persisted so they cannot drift from mileage.
  */
 class MaintenanceStatusRule {
 

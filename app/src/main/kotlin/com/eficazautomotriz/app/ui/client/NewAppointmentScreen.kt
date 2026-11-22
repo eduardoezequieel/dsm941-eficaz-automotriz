@@ -1,5 +1,8 @@
 package com.eficazautomotriz.app.ui.client
 
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.ui.semantics.Role
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -89,7 +92,7 @@ fun NewAppointmentScreen(
             state.loading -> LoadingBox()
             state.loadError != null -> ErrorBox(state.loadError!!, onRetry = vm::load)
             state.catalogMissing -> ErrorBox(
-                "Catálogo no configurado: el taller aún no cargó los tipos de servicio y horarios. Intente más tarde.",
+                "El taller aún no ha cargado los tipos de servicio ni los horarios. Intente más tarde.",
                 onRetry = vm::load,
             )
             state.step == AppointmentStep.DONE -> DoneContent(state, vm::startOver, onViewAppointments)
@@ -239,7 +242,12 @@ private fun ChoiceRow(
                 if (open) "Listo" else "Cambiar",
                 style = MaterialTheme.typography.labelLarge,
                 color = EficazColors.Navy,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onChange).padding(EficazDimens.SpaceSm),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClickLabel = "${if (open) "Cerrar" else "Cambiar"} ${label.lowercase()}", role = Role.Button, onClick = onChange)
+                    .sizeIn(minWidth = EficazDimens.MinTouchTarget, minHeight = EficazDimens.MinTouchTarget)
+                    .wrapContentSize()
+                    .padding(horizontal = EficazDimens.SpaceSm),
             )
         }
     }
@@ -313,7 +321,7 @@ private fun MonthCalendar(
         calendarWeeks(month, today).forEach { week ->
             Row(Modifier.fillMaxWidth()) {
                 week.forEach { day ->
-                    Box(Modifier.weight(1f).height(40.dp).padding(EficazDimens.SpaceXxs), contentAlignment = Alignment.Center) {
+                    Box(Modifier.weight(1f).height(EficazDimens.MinTouchTarget).padding(EficazDimens.SpaceXxs), contentAlignment = Alignment.Center) {
                         if (day != null) DayCell(day, selected = day == selected, enabled = isEnabled(day), onSelect = onSelect)
                     }
                 }
@@ -412,7 +420,7 @@ private fun SlotPill(option: SlotOption, selected: Boolean, onSelect: (SlotOptio
     val taken = !option.selectable
     Box(
         modifier
-            .height(EficazDimens.ButtonHeightCompact)
+            .height(EficazDimens.MinTouchTarget)
             .clip(shape)
             .background(
                 when {

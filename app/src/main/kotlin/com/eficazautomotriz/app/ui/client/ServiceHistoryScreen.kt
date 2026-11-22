@@ -121,7 +121,7 @@ private fun ServiceDetailContent(detail: ServiceDetail) {
         item { RecordCard(detail) }
         item {
             Text(
-                "Las imágenes se almacenan en Cloudinary; el documento del servicio guarda únicamente la URL segura.",
+                "Las fotos las registra el personal del taller en cada etapa del servicio.",
                 style = MaterialTheme.typography.bodySmall,
                 color = EficazColors.TextSecondary,
                 textAlign = TextAlign.Center,
