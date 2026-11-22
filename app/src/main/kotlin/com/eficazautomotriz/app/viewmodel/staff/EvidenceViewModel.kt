@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/** UI state for capturing, previewing, and uploading service-order evidence photos. */
 data class EvidenceState(
     val stage: EvidenceStage = EvidenceStage.RECEPTION,
     /** Picked or captured image, shown as a preview until it is uploaded. */

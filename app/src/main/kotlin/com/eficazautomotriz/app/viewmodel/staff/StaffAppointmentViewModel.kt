@@ -32,6 +32,7 @@ data class RescheduleState(
     val reasonError: String? = null,
 )
 
+/** UI state for staff appointment review, including confirmation, rejection, and rescheduling. */
 data class StaffAppointmentState(
     val row: UiState<AppointmentRow> = UiState.Loading,
     val busy: Boolean = false,

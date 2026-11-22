@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 
+/** Aggregated staff workbench state for P8: pending requests, today's agenda, and orders. */
 data class StaffPanel(
     val pending: List<AppointmentRow>,
     val agenda: List<AppointmentRow>,
