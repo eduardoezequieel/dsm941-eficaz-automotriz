@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/** UI state for closing a service order with final mileage and performed maintenance types. */
 data class CompleteOrderState(
     val loading: Boolean = true,
     val loadError: String? = null,

@@ -15,12 +15,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.time.LocalDate
 
+/** Combined period reports and workshop summary rendered on the P9 reports screen. */
 data class Reports(
     val appointmentsByStatus: PeriodReport,
     val completedServicesByType: PeriodReport,
     val summary: SystemSummary,
 )
 
+/** UI state for P9, holding the active date range, preset selection, and loaded reports. */
 data class ReportsState(
     val from: LocalDate,
     val to: LocalDate,

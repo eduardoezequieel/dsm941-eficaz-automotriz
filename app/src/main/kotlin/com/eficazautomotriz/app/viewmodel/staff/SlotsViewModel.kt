@@ -17,6 +17,7 @@ import java.time.DayOfWeek
 /** `effectiveCapacity` resolves capacity 0 to the system default, as the availability rule does. */
 data class SlotRow(val slot: TimeSlot, val effectiveCapacity: Int)
 
+/** All configurable time slots for a single day of the week. */
 data class SlotDay(val day: DayOfWeek, val slots: List<SlotRow>)
 
 /** Weekly slot configuration: enable/disable and capacity per slot. */
