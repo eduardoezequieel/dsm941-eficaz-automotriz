@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalTime
 
+/** Vehicle paired with its most severe preventive-maintenance status for home cards. */
 data class VehicleSummary(val vehicle: Vehicle, val status: MaintenanceStatus)
 
 /** The single most urgent preventive line across the client's vehicles. */
@@ -31,6 +32,7 @@ data class LastService(
     val vehicle: Vehicle,
 )
 
+/** Aggregated dashboard state for the client home screen (P2). */
 data class ClientHome(
     val user: User,
     val vehicles: List<VehicleSummary>,

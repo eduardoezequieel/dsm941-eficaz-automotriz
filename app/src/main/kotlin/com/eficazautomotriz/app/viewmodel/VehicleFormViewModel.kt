@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/** UI state for the new-vehicle registration form. */
 data class VehicleFormState(
     val plate: String = "",
     val make: String = "",
