@@ -5,6 +5,7 @@ import com.eficazautomotriz.app.data.firestore.string
 import com.eficazautomotriz.domain.model.ServiceType
 import com.google.firebase.firestore.DocumentSnapshot
 
+/** Translates [ServiceType] between `:core` domain models and the Firestore `tiposServicio` collection. */
 object ServiceTypeMapper {
     const val COLLECTION = "tiposServicio"
 

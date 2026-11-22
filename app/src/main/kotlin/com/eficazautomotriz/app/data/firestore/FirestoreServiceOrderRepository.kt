@@ -7,6 +7,10 @@ import com.eficazautomotriz.domain.model.enums.ServiceStatus
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Firestore-backed [ServiceOrderRepository] managing workshop orders and live status listeners
+ * so client and staff screens reflect order transitions without manual refresh.
+ */
 class FirestoreServiceOrderRepository(db: FirebaseFirestore) :
     FirestoreRepository<ServiceOrder>(
         db, ServiceOrderMapper.COLLECTION, "SRV", ServiceOrderMapper::toMap, ServiceOrderMapper::fromDoc,

@@ -5,6 +5,10 @@ import com.eficazautomotriz.data.MaintenanceRecordRepository
 import com.eficazautomotriz.domain.model.MaintenanceRecord
 import com.google.firebase.firestore.FirebaseFirestore
 
+/**
+ * Firestore-backed [MaintenanceRecordRepository] storing only the last-service baseline mileage;
+ * derived classifications are never persisted and are recomputed by `MaintenanceStatusRule`.
+ */
 class FirestoreMaintenanceRecordRepository(db: FirebaseFirestore) :
     FirestoreRepository<MaintenanceRecord>(
         db, MaintenanceRecordMapper.COLLECTION, "MRC", MaintenanceRecordMapper::toMap, MaintenanceRecordMapper::fromDoc,
