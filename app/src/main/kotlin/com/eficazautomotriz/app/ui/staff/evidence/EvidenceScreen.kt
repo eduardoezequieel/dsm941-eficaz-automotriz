@@ -37,7 +37,7 @@ import coil.compose.AsyncImage
 import com.eficazautomotriz.app.ui.LocalVmFactory
 import com.eficazautomotriz.app.ui.components.CardShape
 import com.eficazautomotriz.app.ui.components.EficazCard
-import com.eficazautomotriz.app.ui.components.FieldError
+import com.eficazautomotriz.app.ui.components.ErrorBox
 import com.eficazautomotriz.app.ui.components.InfoBanner
 import com.eficazautomotriz.app.ui.components.MessageSnackbar
 import com.eficazautomotriz.app.ui.components.OutlinedNavyButton
@@ -78,7 +78,7 @@ fun EvidenceScreen(vm: EvidenceViewModel = viewModel(factory = LocalVmFactory.cu
     ) {
         if (!state.cloudinaryConfigured) {
             InfoBanner(
-                "Cloudinary no configurado: agregue cloudinary.cloudName y cloudinary.uploadPreset en local.properties y vuelva a compilar.",
+                "La carga de fotos no está disponible en esta versión de la aplicación. Avise al administrador del sistema.",
                 tone = StatusTone.Warning,
             )
         }
@@ -129,9 +129,11 @@ fun EvidenceScreen(vm: EvidenceViewModel = viewModel(factory = LocalVmFactory.cu
             modifier = Modifier.fillMaxWidth(),
         )
         SectionLabel("Evidencias de la orden", Modifier.padding(top = EficazDimens.SpaceXs))
-        state.loadError?.let { FieldError(it) }
-        if (state.uploaded.isEmpty()) {
-            Text("Aún no hay evidencias.", style = MaterialTheme.typography.bodyMedium, color = EficazColors.TextSecondary)
+        val loadError = state.loadError
+        if (loadError != null) {
+            ErrorBox(loadError, onRetry = vm::load)
+        } else if (state.uploaded.isEmpty()) {
+            Text("Aún no hay evidencias. Tome una foto o elija una de la galería y súbala.", style = MaterialTheme.typography.bodyMedium, color = EficazColors.TextSecondary)
         } else {
             EficazCard(contentPadding = PaddingValues(vertical = EficazDimens.SpaceXs)) {
                 state.uploaded.forEachIndexed { index, evidence ->

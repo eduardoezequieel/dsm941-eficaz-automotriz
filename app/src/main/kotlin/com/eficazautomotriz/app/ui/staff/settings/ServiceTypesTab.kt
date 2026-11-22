@@ -57,7 +57,7 @@ fun ServiceTypesTab(vm: CatalogViewModel) {
             UiState.Loading -> LoadingBox()
             is UiState.Error -> ErrorBox(current.message, onRetry = vm::load)
             is UiState.Ready -> if (current.data.services.isEmpty()) {
-                MutedText("Catálogo de servicios no configurado.")
+                MutedText("Aún no hay tipos de servicio. Agregue el primero con el botón +.")
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(start = EficazDimens.ScreenPadding, end = EficazDimens.ScreenPadding, top = EficazDimens.ScreenPadding, bottom = 88.dp),
@@ -76,7 +76,7 @@ fun ServiceTypesTab(vm: CatalogViewModel) {
         }
         OrangeFab(
             onClick = vm::beginCreateService,
-            contentDescription = "Agregar",
+            contentDescription = "Agregar tipo de servicio",
             modifier = Modifier.align(Alignment.BottomEnd).padding(EficazDimens.ScreenPadding),
         )
     }

@@ -27,6 +27,7 @@ fun orderActionsFor(status: ServiceStatus): Set<OrderAction> = when (status) {
     ServiceStatus.COMPLETED -> emptySet()
 }
 
+/** Staff view of a service order paired with its vehicle and allowed next actions. */
 data class OrderDetail(val row: ServiceOrderRow, val vehicle: Vehicle?) {
     val status: ServiceStatus get() = row.detail.order.status
     val actions: Set<OrderAction> get() = orderActionsFor(status)

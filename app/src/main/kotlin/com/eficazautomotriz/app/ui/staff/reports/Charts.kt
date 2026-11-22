@@ -1,5 +1,6 @@
 package com.eficazautomotriz.app.ui.staff.reports
 
+import com.eficazautomotriz.app.ui.staff.FitText
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -125,15 +126,14 @@ fun VerticalBarChart(bars: List<ChartBar>, modifier: Modifier = Modifier, plotHe
                 ) {
                     // Clipped to the column so a two-line label cannot paint into its neighbor.
                     bar.label.split('\n').forEach { line ->
-                        Text(
+                        val style = MaterialTheme.typography.bodySmall
+                        FitText(
                             line,
+                            style,
+                            EficazColors.TextSecondary,
                             modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = EficazColors.TextSecondary,
+                            minFontSize = style.fontSize * 0.8f,
                             textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Clip,
                         )
                     }
                 }
@@ -197,8 +197,7 @@ fun DonutChart(
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyMedium,
                         color = EficazColors.TextPrimary,
-                        maxLines = 1,
-                        softWrap = false,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.width(EficazDimens.SpaceXs))

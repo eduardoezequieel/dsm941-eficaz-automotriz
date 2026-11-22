@@ -33,6 +33,7 @@ internal fun filterReceptionVehicles(vehicles: List<Vehicle>, query: String): Li
     }
 }
 
+/** UI state for receiving a vehicle into the workshop and creating a service order. */
 data class NewOrderState(
     val loading: Boolean = true,
     val loadError: String? = null,
